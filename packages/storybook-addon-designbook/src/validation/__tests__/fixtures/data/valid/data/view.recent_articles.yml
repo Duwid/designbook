@@ -1,2 +1,4 @@
-- id: "1"
-  label: "Recent Articles"
+- id: filled
+  rows: ["1"]
+- id: empty
+  rows: []

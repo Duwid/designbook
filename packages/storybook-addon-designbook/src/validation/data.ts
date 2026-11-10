@@ -17,6 +17,10 @@ interface BundleDef {
   fields?: Record<string, FieldDef>;
 }
 
+interface ViewDef {
+  row?: { entity_type?: string; bundle?: string };
+}
+
 function validateDesignbookSection(
   rec: Record<string, unknown>,
   entityType: string,
@@ -137,9 +141,22 @@ export function validateData(dataModelPath: string, dataDir: string): Validation
         continue;
       }
 
+      // A View result record lists rows by id of the view's row bundle.
+      const row = entityType === 'view' ? (configModel.view?.[bundle] as ViewDef | undefined)?.row : undefined;
       if (Array.isArray(records)) {
         for (const rec of records) {
           validateDesignbookSection(rec as Record<string, unknown>, entityType, bundle, errors);
+          if (row?.entity_type && row.bundle) {
+            const pool = contentData[row.entity_type]?.[row.bundle] ?? [];
+            const raw = (rec as Record<string, unknown>).rows;
+            for (const id of Array.isArray(raw) ? raw : raw == null ? [] : [raw]) {
+              if (!pool.some((r) => (r as Record<string, unknown>).id === String(id))) {
+                warnings.push(
+                  `Broken row: view.${bundle} id=${String((rec as Record<string, unknown>).id ?? '?')} rows → ${row.entity_type}.${row.bundle} id=${String(id)} not found`,
+                );
+              }
+            }
+          }
         }
       }
     }

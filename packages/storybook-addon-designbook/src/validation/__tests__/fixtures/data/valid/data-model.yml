@@ -1,9 +1,13 @@
 config:
   view:
     recent_articles:
+      row:
+        entity_type: node
+        bundle: article
+        view_mode: teaser
       view_modes:
         default:
-          template: view-entity
+          template: list-view
 
 content:
   node:

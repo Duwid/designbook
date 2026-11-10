@@ -7,6 +7,7 @@ import jsonata from 'jsonata';
 import { load as parseYaml } from 'js-yaml';
 import type { Plan, PlanTask } from './plan-document.js';
 import { componentTreeFields, imageFieldStyle, overlaySampleRecords } from './plan-composition.js';
+import { compileViewMapping, viewDef, type ViewDef } from './view-mapping.js';
 
 interface Binding {
   field: string;
@@ -41,6 +42,14 @@ export function compilePlannedMapping(task: PlanTask, plan: Plan): string {
 )
 `;
   }
+  const model = plan.composition?.data_model ?? {};
+  const mapping = task.params.mapping as { entity_type: string; bundle: string; mode_kind?: string };
+  const view = mapping.mode_kind !== 'form' ? viewDef(model, mapping.entity_type, mapping.bundle) : undefined;
+  if (view) {
+    const row = isObj(view.row) ? view.row : undefined;
+    const rowIndex = row ? indexById(plan, String(row.entity_type ?? ''), String(row.bundle ?? '')) : {};
+    return compileViewMapping(task, view, rowIndex);
+  }
   const component = String(task.params.component ?? '');
   const bindings = (task.params.bindings as Binding[] | undefined) ?? [];
   if (!component) throw new Error('map-entity is missing component');
@@ -48,13 +57,7 @@ export function compilePlannedMapping(task: PlanTask, plan: Plan): string {
   const slots: string[] = [];
   for (const binding of bindings) {
     const fieldExpr = fieldAccess(binding);
-    const mapping = task.params.mapping as { entity_type: string; bundle: string };
-    const imageStyle = imageFieldStyle(
-      plan.composition?.data_model ?? {},
-      mapping.entity_type,
-      mapping.bundle,
-      binding.field,
-    );
+    const imageStyle = imageFieldStyle(model, mapping.entity_type, mapping.bundle, binding.field);
     if (imageStyle !== undefined) {
       if (!imageStyle || !binding.slot || binding.prop || binding.entity || binding.path?.length) {
         throw new Error(`invalid image binding for field ${binding.field}`);
@@ -244,6 +247,11 @@ async function validateMapping(
   } catch {
     return;
   }
+  const view = viewDef(plan.composition?.data_model ?? {}, mapping.entity_type, mapping.bundle);
+  if (view) {
+    await evaluateViewResults(plan, task, view, compiled, errors);
+    return;
+  }
   const treeFields = treeFieldsFor(task, plan);
   if (treeFields.length === 1) {
     const field = treeFields[0]!;
@@ -306,6 +314,59 @@ async function validateMapping(
         });
       }
     }
+  }
+}
+
+/**
+ * Evaluate a view mapping once per result record of `data/view.<id>.yml`, with the view's
+ * data-model entry bound as `$view`: the wrapper is the declared component and the rows slot
+ * renders exactly the record's rows in the view's row bundle and view mode.
+ */
+async function evaluateViewResults(
+  plan: Plan,
+  task: PlanTask,
+  view: ViewDef,
+  compiled: ReturnType<typeof jsonata>,
+  errors: string[],
+): Promise<void> {
+  const mapping = task.params.mapping as { bundle: string };
+  const row = view.row;
+  const pool = recordsFor(plan, row.entity_type, row.bundle);
+  const entity = `${row.entity_type}.${row.bundle}`;
+  const rowsSlot = ((task.params.bindings as Binding[] | undefined) ?? []).find((b) => b.field === 'rows')?.slot;
+  for (const rec of recordsFor(plan, 'view', mapping.bundle)) {
+    const values: Record<string, unknown> = { id: rec.id, ...(rec.values ?? {}) };
+    let out: unknown;
+    try {
+      out = await compiled.evaluate(values, { view });
+    } catch (err: unknown) {
+      errors.push(
+        `jsonata evaluation failed for result ${rec.id}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      continue;
+    }
+    const node = (Array.isArray(out) ? out[0] : out) as
+      | { component?: string; slots?: Record<string, unknown> }
+      | undefined;
+    if (node?.component !== task.params.component) {
+      errors.push(
+        `result ${rec.id}: evaluated component ${JSON.stringify(node?.component)} does not match ${String(task.params.component)}`,
+      );
+    }
+    if (!rowsSlot) continue;
+    const ids = Array.isArray(values.rows) ? values.rows : values.rows == null ? [] : [values.rows];
+    const actual = node?.slots?.[rowsSlot];
+    const items = Array.isArray(actual) ? actual : [];
+    if (items.length !== ids.length) {
+      errors.push(`result ${rec.id}: slot ${rowsSlot} rendered ${items.length} rows, expected ${ids.length}`);
+    }
+    ids.forEach((id, i) => {
+      const idx = pool.findIndex((r) => String(r.id) === String(id));
+      const item = items[i] as { entity?: string; view_mode?: string; record?: number } | undefined;
+      if (item?.entity !== entity || item.view_mode !== row.view_mode || item.record !== idx) {
+        errors.push(`result ${rec.id}: slot ${rowsSlot}[${i}] expected ${entity} [${row.view_mode}] record ${idx}`);
+      }
+    });
   }
 }
 

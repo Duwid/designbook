@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import { resolve } from 'node:path';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { entityBuilder } from '../../../scene-model/builders/entity-builder';
 import type { BuildContext, ComponentNode } from '../../../scene-model/types';
 
@@ -184,5 +186,48 @@ describe('entityBuilder', () => {
     expect(Array.isArray(result.nodes)).toBe(true);
     expect(result.nodes!.length).toBe(1);
     expect((result.nodes![0] as ComponentNode).component).toBe('view');
+  });
+
+  it('build() evaluates a view node without record against result record 0 with $view bound', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'entity-view-'));
+    mkdirSync(join(dir, 'entity-mapping'));
+    writeFileSync(
+      join(dir, 'entity-mapping', 'view.contacts.default.jsonata'),
+      '[{ "component": "listing", "props": { "title": $view.title, "count": $count($.rows) }, "slots": { "empty": $count($.rows) = 0 ? $view.empty } }]',
+    );
+    try {
+      const ctx = makeCtx({
+        designbookDir: dir,
+        dataModel: {
+          content: {},
+          config: { view: { contacts: { title: 'My contacts', empty: 'None yet.' } as never } },
+        },
+        sampleData: {
+          config: {
+            view: {
+              contacts: [
+                { id: 'filled', rows: ['1', '2'] },
+                { id: 'empty', rows: [] },
+              ],
+            },
+          },
+        },
+      });
+      const first = await entityBuilder.build({ entity: 'view.contacts', view_mode: 'default' }, ctx);
+      expect(first.nodes).toEqual([{ component: 'listing', props: { title: 'My contacts', count: 2 }, slots: {} }]);
+      const second = await entityBuilder.build({ entity: 'view.contacts', view_mode: 'default', record: 1 }, ctx);
+      expect(second.nodes).toEqual([
+        { component: 'listing', props: { title: 'My contacts', count: 0 }, slots: { empty: 'None yet.' } },
+      ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('build() evaluates an entity node without record or select against record 0', async () => {
+    const node = { entity: 'node.article', view_mode: 'teaser' };
+    const withRecord = await entityBuilder.build({ ...node, record: 0 }, makeCtx());
+    const withoutRecord = await entityBuilder.build(node, makeCtx());
+    expect(withoutRecord.nodes).toEqual(withRecord.nodes);
   });
 });

@@ -3,6 +3,7 @@ import { resolve, basename } from 'node:path';
 import jsonata from 'jsonata';
 import type { ValidationResult } from './types.js';
 import type { DesignbookConfig } from '../shared/config.js';
+import { load as parseYaml } from 'js-yaml';
 import { readBundleFiles } from '../scene-model/data-pool.js';
 
 interface ComponentNode {
@@ -70,6 +71,9 @@ export async function validateEntityMapping(file: string, config: DesignbookConf
     return { valid: false, errors: [`No sample data found in ${dataDir}`], warnings: [] };
   }
 
+  // A View mapping (`view.<id>.<mode>.jsonata`) reads its config through `$view`.
+  const viewBindings = targetEntityType === 'view' && targetBundle ? loadViewBindings(config, targetBundle) : undefined;
+
   const errors: string[] = [];
   let recordsTested = 0;
 
@@ -84,7 +88,7 @@ export async function validateEntityMapping(file: string, config: DesignbookConf
         recordsTested++;
         let output: unknown;
         try {
-          output = await compiled.evaluate(record as Record<string, unknown>);
+          output = await compiled.evaluate(record as Record<string, unknown>, viewBindings);
         } catch (err) {
           errors.push(`${entityType}.${bundle}: JSONata error: ${(err as Error).message}`);
           continue;
@@ -108,4 +112,15 @@ export async function validateEntityMapping(file: string, config: DesignbookConf
   }
 
   return { valid: errors.length === 0, errors, warnings: [] };
+}
+
+/** `{ view: config.view.<id> }` from the data model, or undefined when the view is not declared. */
+function loadViewBindings(config: DesignbookConfig, id: string): { view: Record<string, unknown> } | undefined {
+  const modelPath = resolve(config.data, 'data-model.yml');
+  if (!existsSync(modelPath)) return undefined;
+  const model = parseYaml(readFileSync(modelPath, 'utf-8')) as {
+    config?: { view?: Record<string, Record<string, unknown>> };
+  } | null;
+  const view = model?.config?.view?.[id];
+  return view ? { view } : undefined;
 }

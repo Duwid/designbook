@@ -1,0 +1,164 @@
+{
+  "workflow": "design-entity",
+  "composition": {
+    "components": [],
+    "mappings": [],
+    "samples": [],
+    "scenes": [],
+    "data_model": {
+      "config": {
+        "view": {
+          "contacts": {
+            "label": "Contacts",
+            "display": "page",
+            "path": "/contacts",
+            "title": "My contacts",
+            "row": { "entity_type": "user", "bundle": "user", "view_mode": "contact" },
+            "pager": { "type": "full", "items_per_page": 10 },
+            "empty": "You have no contacts yet.",
+            "sorts": [
+              { "field": "name", "order": "ASC", "exposed": true, "label": "Name" },
+              { "field": "created", "order": "DESC" }
+            ],
+            "view_modes": {
+              "default": { "template": "list-view", "settings": { "columns": 2 } }
+            }
+          }
+        }
+      },
+      "content": {
+        "user": {
+          "user": {
+            "title": "User",
+            "fields": { "name": { "type": "string", "title": "Name" } },
+            "view_modes": { "contact": { "template": "field-map", "label": "Contact" } }
+          }
+        }
+      }
+    }
+  },
+  "tasks": [
+    {
+      "step": "write-component",
+      "task": "write-component",
+      "title": "listing",
+      "params": {
+        "component": {
+          "component": "listing",
+          "group": "layout",
+          "props": {
+            "type": "object",
+            "properties": {
+              "title": { "type": "string" },
+              "count": { "type": "integer" },
+              "pager": { "type": "string" },
+              "itemsPerPage": { "type": "integer" },
+              "page": { "type": "integer" },
+              "sorts": { "type": "array" },
+              "columns": { "type": "integer" }
+            },
+            "required": [],
+            "additionalProperties": false
+          },
+          "slots": {
+            "rows": { "description": "Rendered rows", "required": true },
+            "empty": { "description": "Empty text", "required": false }
+          }
+        }
+      }
+    },
+    {
+      "step": "write-component",
+      "task": "write-component",
+      "title": "contact_row",
+      "params": {
+        "component": {
+          "component": "contact_row",
+          "group": "content",
+          "props": {
+            "type": "object",
+            "properties": { "name": { "type": "string" } },
+            "required": ["name"],
+            "additionalProperties": false
+          },
+          "slots": {}
+        }
+      }
+    },
+    {
+      "step": "create-sample-data",
+      "task": "create-sample-data",
+      "title": "user",
+      "params": {
+        "section_id": "contacts",
+        "bundle": { "entity_type": "user", "bundle": "user" },
+        "data_model": {},
+        "components_dir": "components",
+        "records": [
+          { "id": "contacts-1", "summary": "Ada", "values": { "name": "Ada Lovelace" } },
+          { "id": "contacts-2", "summary": "Alan", "values": { "name": "Alan Turing" } },
+          { "id": "contacts-3", "summary": "Grace", "values": { "name": "Grace Hopper" } }
+        ]
+      }
+    },
+    {
+      "step": "create-sample-data",
+      "task": "create-sample-data",
+      "title": "contacts",
+      "params": {
+        "section_id": "contacts",
+        "bundle": { "entity_type": "view", "bundle": "contacts" },
+        "data_model": {},
+        "components_dir": "components",
+        "records": [
+          { "id": "filled", "summary": "Two contacts", "values": { "rows": ["contacts-3", "contacts-1"], "total": 12, "page": 0 } },
+          { "id": "empty", "summary": "No contacts", "values": { "rows": [] } }
+        ]
+      }
+    },
+    {
+      "step": "map-entity",
+      "task": "map-entity--design-screen",
+      "title": "contact",
+      "params": {
+        "mapping": { "entity_type": "user", "bundle": "user", "mode_kind": "view", "view_mode": "contact" },
+        "data_model": {},
+        "component": "test_integration_vue:contact_row",
+        "bindings": [{ "field": "name", "prop": "name" }]
+      }
+    },
+    {
+      "step": "map-entity",
+      "task": "map-entity--design-screen",
+      "title": "contacts",
+      "params": {
+        "mapping": { "entity_type": "view", "bundle": "contacts", "mode_kind": "view", "view_mode": "default" },
+        "data_model": {},
+        "component": "test_integration_vue:listing",
+        "bindings": [
+          { "field": "title", "prop": "title" },
+          { "field": "total", "prop": "count" },
+          { "field": "pager", "prop": "pager" },
+          { "field": "items_per_page", "prop": "itemsPerPage" },
+          { "field": "page", "prop": "page" },
+          { "field": "exposed_sorts", "prop": "sorts" },
+          { "field": "settings", "path": ["columns"], "prop": "columns" },
+          { "field": "rows", "slot": "rows" },
+          { "field": "empty", "slot": "empty" }
+        ]
+      }
+    },
+    {
+      "step": "write-scene",
+      "task": "write-scene",
+      "title": "Contacts",
+      "params": {
+        "scene_name": "Contacts",
+        "scene_scope": "standalone",
+        "scene_path": "sections/contacts/contacts.section.scenes.yml",
+        "components_dir": "components",
+        "items": [{ "entity": "view.contacts", "view_mode": "default" }]
+      }
+    }
+  ]
+}

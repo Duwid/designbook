@@ -7,6 +7,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative } from 'node:path';
 import { substitute } from '../scene-model/builders/scene-builder.js';
 import type { Plan, PlanTask } from './plan-document.js';
+import { resolveViewBindings, validateViewMapping, viewDef } from './view-mapping.js';
 
 export const WRITING_DESIGN_WORKFLOWS = new Set(['design-entity', 'design-component', 'design-screen', 'design-shell']);
 
@@ -373,6 +374,11 @@ export function deriveComposition(plan: Plan): { tree: CompositionTree; errors: 
   }
 
   const mappings = new Map<string, MappingRec>();
+  /** A view's `rows` binding renders the view's row: give it that entity so the tree descends into it. */
+  const resolveViewRec = (rec: MappingRec) => {
+    const view = viewDef(model, rec.entity_type, rec.bundle);
+    if (view) rec.bindings = resolveViewBindings(view, rec.bindings);
+  };
   const mappingProducers = new Map<string, string[]>();
   composition.mappings.forEach((snap, i) => {
     const identity = isObj(snap.identity) ? snap.identity : {};
@@ -398,6 +404,7 @@ export function deriveComposition(plan: Plan): { tree: CompositionTree; errors: 
       component: asString(snap.component),
       bindings: Array.isArray(snap.bindings) ? (snap.bindings as Binding[]) : [],
     };
+    resolveViewRec(rec);
     mappings.set(mappingKey(rec), rec);
   });
   for (const { step, task } of tasks) {
@@ -414,6 +421,7 @@ export function deriveComposition(plan: Plan): { tree: CompositionTree; errors: 
       component: asString(task.params.component),
       bindings: Array.isArray(task.params.bindings) ? (task.params.bindings as Binding[]) : [],
     };
+    resolveViewRec(rec);
     const key = mappingKey(rec);
     const titles = mappingProducers.get(key) ?? [];
     titles.push(task.title || key);
@@ -453,6 +461,37 @@ export function deriveComposition(plan: Plan): { tree: CompositionTree; errors: 
       if (!pool || pool.records.length === 0) {
         errors.push(`${prefix('mapping')}: empty required samples for ${rec.entity_type}.${rec.bundle}`);
       }
+      continue;
+    }
+    const view = viewDef(model, rec.entity_type, rec.bundle);
+    if (view && rec.mode_kind !== 'form') {
+      // A view's template is its style (list-view, grid, …); the view parts, not fields, are bound.
+      if (!rec.component) {
+        errors.push(`${prefix('component')}: view mapping requires a wrapper component`);
+        continue;
+      }
+      if (!Array.isArray(rec.task.params.bindings)) {
+        errors.push(`${prefix('bindings')}: view mapping requires bindings`);
+        continue;
+      }
+      const comp = components.get(rec.component);
+      if (!comp) {
+        errors.push(`${prefix('component')}: no contract for ${rec.component}`);
+        continue;
+      }
+      const viewErrors = validateViewMapping(view, rec.task.params.bindings as Binding[], {
+        bundle: rec.bundle,
+        view_mode: mode,
+        props: contractProps(comp.contract),
+        slots: contractSlots(comp.contract),
+        viewModesOf: (et, b) => {
+          const def = getBundle(model, et, b);
+          return def ? viewModes(def) : undefined;
+        },
+        hasMapping: (key) => mappings.has(key),
+        records: (et, b) => samples.get(`${et}.${b}`)?.records,
+      });
+      for (const e of viewErrors) errors.push(`${prefix(e.path)}: ${e.message}`);
       continue;
     }
     if (rec.mode_kind !== 'form') {

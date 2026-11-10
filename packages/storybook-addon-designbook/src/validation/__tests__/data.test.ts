@@ -80,4 +80,10 @@ describe('validateData', () => {
     expect(result.errors.some((e) => e.includes('__designbook.section'))).toBe(true);
     expect(result.errors.some((e) => e.includes('view.recent_articles'))).toBe(true);
   });
+
+  it('warns when a view result record lists a row id missing from the row bundle', () => {
+    const result = validateData(validDataModel, resolve(fixtures, 'warning-view-row', 'data'));
+    expect(result.valid).toBe(true);
+    expect(result.warnings).toEqual(['Broken row: view.recent_articles id=filled rows → node.article id=99 not found']);
+  });
 });

@@ -551,3 +551,95 @@ describe('validateCompositionResult — direct missing file', () => {
     expect(result.errors.join('\n')).toMatch(/not found|missing/i);
   });
 });
+
+describe('view mappings — compile and result validation', () => {
+  const viewFixture = JSON.parse(
+    readFileSync(resolve(process.cwd(), 'src/__tests__/fixtures/plans/view-tasks.json'), 'utf8'),
+  ) as TaskList;
+  const view = (viewFixture.composition!.data_model as { config: { view: { contacts: Record<string, unknown> } } })
+    .config.view.contacts;
+
+  async function buildView(): Promise<{ plan: Plan; task: PlanTask }> {
+    const { plan, errors } = await buildPlan(structuredClone(viewFixture), vueOpts);
+    expect(errors).toEqual([]);
+    return { plan: plan!, task: findTask(plan!, 'map-entity', 'contacts') };
+  }
+
+  it('compiles the canonical wrapper with config parts from $view and result parts from the record', async () => {
+    const { plan, task } = await buildView();
+    expect(compilePlannedMapping(task, plan)).toBe(`(
+  $fields := $;
+  [
+    {
+      "component": "test_integration_vue:listing",
+      "props": {
+        "title": $view.title,
+        "count": $exists($fields.total) ? $fields.total : $count($fields.rows),
+        "pager": $view.pager.type,
+        "itemsPerPage": $view.pager.items_per_page,
+        "page": $fields.page,
+        "sorts": [$view.sorts[exposed = true].{ "value": field, "label": label }],
+        "columns": $view.view_modes.default.settings.columns
+      },
+      "slots": {
+        "rows": [$map($fields.rows, function($id) { { "entity": "user.user", "view_mode": "contact", "record": $lookup({"contacts-1":0,"contacts-2":1,"contacts-3":2}, $string($id)) } })],
+        "empty": $count($fields.rows) = 0 ? $view.empty
+      }
+    }
+  ]
+)
+`);
+  });
+
+  it('evaluates each result record with $view bound to the view entry', async () => {
+    const { plan, task } = await buildView();
+    const expr = jsonata(compilePlannedMapping(task, plan));
+    const [filled] = await expr.evaluate(
+      { id: 'filled', rows: ['contacts-3', 'contacts-1'], total: 12, page: 0 },
+      { view },
+    );
+    expect(filled).toEqual({
+      component: 'test_integration_vue:listing',
+      props: {
+        title: 'My contacts',
+        count: 12,
+        pager: 'full',
+        itemsPerPage: 10,
+        page: 0,
+        sorts: [{ value: 'name', label: 'Name' }],
+        columns: 2,
+      },
+      slots: {
+        rows: [
+          { entity: 'user.user', view_mode: 'contact', record: 2 },
+          { entity: 'user.user', view_mode: 'contact', record: 0 },
+        ],
+      },
+    });
+    const [empty] = await expr.evaluate({ id: 'empty', rows: [] }, { view });
+    expect(empty.props.count).toBe(0);
+    expect(empty.slots).toEqual({ rows: [], empty: 'You have no contacts yet.' });
+  });
+
+  it('accepts the compiled mapping for every result record', async () => {
+    const { plan, task } = await buildView();
+    const result = await validateCompositionResult(plan, task, { 'entity-mapping': compilePlannedMapping(task, plan) });
+    expect(result).toEqual({ ok: true, errors: [] });
+  });
+
+  it('rejects swapped parts', async () => {
+    const { plan, task } = await buildView();
+    const swapped = compilePlannedMapping(task, plan).replace('"title": $view.title', '"title": $view.empty');
+    const result = await validateCompositionResult(plan, task, { 'entity-mapping': swapped });
+    expect(result.errors).toContain('mapping AST does not match the declared bindings');
+  });
+
+  it('rejects rows rendered in another view mode', async () => {
+    const { plan, task } = await buildView();
+    const wrongMode = compilePlannedMapping(task, plan).replace('"view_mode": "contact"', '"view_mode": "teaser"');
+    const result = await validateCompositionResult(plan, task, { 'entity-mapping': wrongMode });
+    expect(result.ok).toBe(false);
+    expect(result.errors).toContain('mapping AST does not match the declared bindings');
+    expect(result.errors).toContain('result filled: slot rows[0] expected user.user [contact] record 2');
+  });
+});

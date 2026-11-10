@@ -1079,6 +1079,44 @@ describe('plan done composition enforcement', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it('emits the compiled view mapping on map-entity plan instructions for a view', async () => {
+    const setup = setupSignage();
+    writeFileSync(setup.tasksPath, readFileSync(signageFixturePath.replace('signage-tasks', 'view-tasks'), 'utf8'));
+    try {
+      process.exitCode = undefined;
+      const build = await runCli([
+        'plan',
+        'build',
+        'design-entity',
+        '--tasks',
+        setup.tasksPath,
+        '--output',
+        setup.planPath,
+        '--config-dir',
+        workspaceRoot,
+        '--config',
+        setup.configPath,
+        '--format',
+        'json',
+      ]);
+      expect(build.exitCode).toBe(0);
+      const plan = parsePlan(readFileSync(setup.planPath, 'utf8'));
+      const { stdout, exitCode } = await runCli(['plan', 'instructions', setup.planPath, '--step', 'map-entity']);
+      expect(exitCode).toBe(0);
+      const payload = JSON.parse(stdout) as { tasks: Array<{ title: string; expected_mapping?: string }> };
+      const view = payload.tasks.find((t) => t.title === 'contacts')!;
+      const task = plan.steps
+        .flatMap((s) => s.tasks)
+        .find((t) => t.title === 'contacts' && t.name.includes('map-entity'))!;
+      expect(view.expected_mapping).toBe(compilePlannedMapping(task, plan));
+      expect(view.expected_mapping).toContain('"title": $view.title');
+      expect(view.expected_mapping).toContain('"entity": "user.user", "view_mode": "contact"');
+    } finally {
+      process.exitCode = undefined;
+      rmSync(setup.dir, { recursive: true, force: true });
+    }
+  });
 });
 
 const treeContract = (name: string, props: string[], slots: string[]) => ({

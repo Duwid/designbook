@@ -79,22 +79,23 @@ export const entityBuilder: SceneNodeBuilder = {
       []) as Record<string, unknown>[];
 
     // Resolve the record: a `select` JSONata predicate over the array (`$`) takes
-    // precedence; otherwise a numeric `record` indexes the bundle's pool array
-    // (the documented form for nested entity refs, e.g. `{ entity, view_mode, record }`).
-    // Neither (e.g. view entities) → evaluate the mapping with {}.
+    // precedence; otherwise `record` indexes the bundle's pool array, defaulting to 0
+    // (for a View the pool is its result records in data/view.<id>.yml).
     const record = node['record'];
     let recordData: unknown = {};
     if (select) {
       const selected = await jsonata(select).evaluate(entityArray);
       recordData = selected ?? {};
-    } else if (typeof record === 'number') {
-      recordData = entityArray[record] ?? {};
+    } else {
+      recordData = entityArray[typeof record === 'number' ? record : 0] ?? {};
     }
 
-    // 3. Compile and evaluate the JSONata expression
+    // 3. Compile and evaluate the JSONata expression. A View mapping reads its config
+    //    (title, pager, empty text, …) through `$view`, the view's data-model entry.
     const source = readFileSync(jsonataPath, 'utf-8');
     const expr = jsonata(source);
-    const result = await expr.evaluate(recordData);
+    const view = entity_type === 'view' ? ctx.dataModel.config?.view?.[bundle] : undefined;
+    const result = await expr.evaluate(recordData, view ? { view } : undefined);
 
     // 3b. Extract field mappings from the JSONata AST
     let fieldMappings: FieldMapping[] | undefined;

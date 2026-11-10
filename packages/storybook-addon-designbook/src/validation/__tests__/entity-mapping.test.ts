@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { resolve } from 'node:path';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { validateEntityMapping } from '../entity-mapping.js';
 import type { DesignbookConfig } from '../../shared/config.js';
 
@@ -26,5 +28,28 @@ describe('validateEntityMapping', () => {
     const result = await validateEntityMapping(mappingFile, makeConfig('/nonexistent/data'));
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.includes('No sample data'))).toBe(true);
+  });
+
+  it('validates a view mapping with $view bound to the config.view entry', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'view-mapping-'));
+    mkdirSync(join(dir, 'data'));
+    mkdirSync(join(dir, 'entity-mapping'));
+    writeFileSync(
+      join(dir, 'data-model.yml'),
+      'content: {}\nconfig:\n  view:\n    contacts:\n      title: My contacts\n      row: { entity_type: user, bundle: user, view_mode: contact }\n      view_modes: { default: { template: list-view } }\n',
+    );
+    writeFileSync(join(dir, 'data', 'view.contacts.yml'), '- id: filled\n  rows: ["1"]\n- id: empty\n  rows: []\n');
+    const file = join(dir, 'entity-mapping', 'view.contacts.default.jsonata');
+    // Without the binding, $view is undefined and the mapping emits a node without a component.
+    writeFileSync(
+      file,
+      '$exists($view.title) ? [{ "component": "listing", "props": { "title": $view.title } }] : [{ "missing": "view" }]',
+    );
+    try {
+      const result = await validateEntityMapping(file, makeConfig(dir));
+      expect(result).toEqual({ valid: true, errors: [], warnings: [] });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
