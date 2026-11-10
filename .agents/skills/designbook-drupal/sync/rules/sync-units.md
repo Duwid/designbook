@@ -37,9 +37,12 @@ Each unit is one Drupal configuration object: `name` is the config name, `path` 
 
 **For a config slice** (`data_model.config.<config_key>`) that matches the filter:
 
-- **General rule:** emit one unit with `name = <config_key>` (using the key exactly as it appears in the data model, e.g. `views.listing` → `name = views.listing`). Carries `config_key` and `def` (the config def).
+- **General rule:** emit one unit with `name = <config_key>` (using the key exactly as it appears in the data model, e.g. `system.site` → `name = system.site`). Carries `config_key` and `def` (the config def).
 
-- **Exception — `image_style`:** the `image_style` config block is bundle-nested (each child key is one image style, e.g. `ratio_16_9`). Do NOT emit a single `image_style` unit. Instead emit one unit PER child key: `name = image.style.<child>` (e.g. `image.style.ratio_16_9`). Each unit carries `config_key = image_style` and `def` set to the child def (e.g. `{ aspect_ratio: '16:9' }`). This mirrors how content bundles expand into multiple Drupal-named units and matches the `image.style.<name>` filename shape expected by Drupal. All OTHER config keys (already Drupal-native, e.g. `views.view.landing_teasers`) stay as single verbatim units.
+- **Exception — `image_style`:** the `image_style` config block is bundle-nested (each child key is one image style, e.g. `ratio_16_9`). Do NOT emit a single `image_style` unit. Instead emit one unit PER child key: `name = image.style.<child>` (e.g. `image.style.ratio_16_9`). Each unit carries `config_key = image_style` and `def` set to the child def (e.g. `{ aspect_ratio: '16:9' }`). This mirrors how content bundles expand into multiple Drupal-named units and matches the `image.style.<name>` filename shape expected by Drupal.
+- **Exception — `view`:** the `view` config block is bundle-nested the same way (each child key is one View). Emit one unit PER child key: `name = views.view.<child>` (e.g. `views.view.landing_teasers`), carrying `config_key = view` and `def` set to the child `ViewBundle`. A filter `config_key=view.<child>` selects that one View. Its result sample records (`data/view.<child>.yml`) never become units.
+
+All OTHER config keys stay as single verbatim units.
 
 When the filter is empty, include every entity type + bundle and every config key found in the data model.
 

@@ -1,7 +1,8 @@
 # Data model concern schemas
 # Content has a fixed schema (entity_type → bundle → purpose, view_modes, form_modes, fields).
 # A bundle has two display halves: reading (view_modes) and editing (form_modes) — same shape.
-# Config stays open — each config type brings its own schema via extends/constrains.
+# Config stays open — each config type brings its own schema via extends/constrains; a View
+# (`config.view.<id>`) is the one config type with a core shape, ViewBundle.
 
 DataModel:
   type: object
@@ -90,4 +91,147 @@ DataModel:
           additionalProperties: true
     config:
       type: object
+      description: >-
+        Config entities keyed by config type. `view` holds the Views (ViewBundle); every other key
+        is a backend config type that brings its own shape (e.g. `image_style`, `block_plugin`).
+      properties:
+        view:
+          type: object
+          description: >-
+            Views keyed by view id — each a listing of row-bundle records, rendered by a scene node
+            `entity: view.<id>` and synced to the backend from this one declaration.
+          additionalProperties:
+            $ref: "#/ViewBundle"
       additionalProperties: true
+
+ViewBundle:
+  type: object
+  title: View
+  description: >-
+    One View — a listing that renders records of its row bundle. The same declaration drives the
+    Storybook render (the view mapping reads it as `$view`) and the backend sync. The rows a view
+    shows are not declared here: they are the view's result sample records in
+    `data/view.<id>.yml` (SampleData `ViewResult`), one record per displayed state.
+  required: [display, row, view_modes]
+  additionalProperties: false
+  properties:
+    label:
+      type: string
+      description: Human-readable view name.
+      examples: [Contacts, Landing teasers]
+    purpose:
+      type: string
+      description: What the listing is for and where it appears.
+    display:
+      type: string
+      enum: [page, block]
+      description: >-
+        `page` owns a route (`path`) and can be a screen's route-bearing main content; `block`
+        owns no route and is placed beside the main content.
+    path:
+      type: string
+      description: Route of a `page` display; required when `display` is `page`.
+      examples: [/contacts, /news]
+    title:
+      type: string
+      description: Heading the view shows above its rows.
+    row:
+      type: object
+      description: The row plugin — every row renders one record of this bundle in this view mode.
+      required: [entity_type, bundle, view_mode]
+      additionalProperties: false
+      properties:
+        entity_type:
+          type: string
+          description: Content entity type of the rows.
+          examples: [node, user]
+        bundle:
+          type: string
+          description: Bundle of the rows.
+          examples: [article, user]
+        view_mode:
+          type: string
+          description: View mode of the row bundle each row renders in.
+          examples: [teaser, contact]
+    pager:
+      type: object
+      description: >-
+        Paging. `full` numbers the pages, `mini` shows previous/next only, `none` shows every row —
+        or, with `items_per_page`, a fixed number of rows.
+      required: [type]
+      additionalProperties: false
+      properties:
+        type:
+          type: string
+          enum: [full, mini, none]
+          description: Pager kind.
+        items_per_page:
+          type: integer
+          minimum: 1
+          description: Rows per page (with `none`, the fixed row limit).
+    empty:
+      type: string
+      description: Text shown when the result has no rows.
+    header:
+      type: string
+      description: Text shown above the rows.
+    footer:
+      type: string
+      description: Text shown below the rows.
+    sorts:
+      type: array
+      description: Sort criteria in order; an exposed sort is offered to the visitor.
+      items:
+        type: object
+        required: [field]
+        additionalProperties: false
+        properties:
+          field:
+            type: string
+            description: Row-bundle field (or base field such as `created`) to sort by.
+            examples: [created, title]
+          order:
+            type: string
+            enum: [ASC, DESC]
+            description: Sort direction.
+          exposed:
+            type: boolean
+            description: Whether the visitor can choose this sort.
+          label:
+            type: string
+            description: Label of an exposed sort.
+    filters:
+      type: object
+      description: >-
+        Result filters, field → value (e.g. `status: 1`). Synced to the backend only; the rendered
+        rows come from the result sample records.
+      additionalProperties: true
+    view_modes:
+      type: object
+      description: >-
+        Display modes of the view; `default` is required. `template` is the view's style value
+        (e.g. list-view, grid) and `settings` its style options (e.g. columns).
+      required: [default]
+      additionalProperties:
+        type: object
+        required: [template]
+        additionalProperties: false
+        properties:
+          template:
+            type: string
+            description: >-
+              The view's style value. Its allowed values come from `entity_mapping.templates` in
+              `designbook.config.yml`; not enum-fixed here because the set is project-configured.
+            examples: [list-view, grid]
+          label:
+            type: string
+            description: Human-readable name of a non-default mode.
+          settings:
+            type: object
+            description: Style options of this mode; each style defines its keys (e.g. columns).
+            additionalProperties: true
+  if:
+    properties:
+      display: { const: page }
+  then:
+    required: [path]

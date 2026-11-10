@@ -10,44 +10,17 @@ filter:
 
 # Entity Type: view
 
-```yaml
-entity_type: view
-section: config
-base_fields:
-  rows:
-    type: view_rows
-    required: true
-  items_per_page:
-    type: integer
-    required: false
-  header:
-    type: text
-    required: false
-  footer:
-    type: text
-    required: false
-  empty:
-    type: text
-    required: false
-view_modes:
-  required: true
-```
+A view lives under `config.view.<id>`; its shape is the core `ViewBundle` schema. It has no
+fields — the rows it lists are its result sample records in `data/view.<id>.yml`.
 
 ## Drupal Config Export Pattern
 
 The concrete `.jsonata` is authored per config-name task against the prepare-fetched schema.
-The pattern below describes the mapping intent for authoring that transform.
 
-**Input:** `{ key, def: { items_per_page?, view_modes?: [<string>] } }`
+**Input:** `{ key, def }` — `key` is the view id, `def` the `ViewBundle` entry.
 
-**Output config-name units:**
-- `views.view.<key>` — a single Views config entity; keys include `id`, `label` (both from `key`), `base_table: "node_field_data"`, `base_field: "nid"`, module dependency `["views"]`, and a `display` map with a `"default"` display entry
-- The default display's pager uses `items_per_page` from `def.items_per_page` (falls back to `10`); access type `"none"`, cache type `"tag"`
+**Output config-name unit:** `views.view.<key>` — one Views config entity with `id` and `label`,
+module dependency `views`, a `default` display and one `page_1` or `block_1` display per
+`def.display`. The views data-mapping blueprint maps each `def` key to its display options.
 
 All emitted units carry `langcode: "en"`, `status: true`, and a `dependencies` object.
-
-## Rules
-
-- `rows` is generated at sample data time from context (entity_type, bundle, view_mode of the targeted content) — do NOT manually declare row values in the data model
-- Every view bundle MUST declare at least one `view_modes` entry
-- `view` lives under `config:` in data-model.yml — NOT under `content:`

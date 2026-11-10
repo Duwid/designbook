@@ -43,7 +43,33 @@ PlannedSampleRecord:
         Concrete fields needed by planned bindings, references, and composition.
         Keys are field machine names. A field whose data-model type is
         `component_tree` holds a ComponentNode[] tree (see scenes ComponentNode).
+        A View result record (`entity_type: view`) holds the ViewResult values.
       additionalProperties: true
+
+ViewResult:
+  type: object
+  title: View result
+  description: >
+    Values of one record in a View's result pool (`data/view.<id>.yml`): one displayed state of
+    the listing, e.g. `filled` or `empty`. The scene node `entity: view.<id>` selects it with
+    `record:`.
+  required: [rows]
+  properties:
+    rows:
+      type: array
+      description: Ids of the row-bundle records the view lists, in display order; empty for the empty state.
+      items: { type: string }
+      examples:
+        - ["article-3", "article-1"]
+        - []
+    total:
+      type: integer
+      minimum: 0
+      description: Total result count across all pages, at least the row count; defaults to the row count.
+    page:
+      type: integer
+      minimum: 0
+      description: Zero-based index of the displayed page.
 
 SampleDataBundle:
   type: array

@@ -93,7 +93,7 @@ is exported twice.
 
 - **Exposed filters.** A `views_exposed_filter_block:*` entry depends on the view display
   it exposes having its exposed-filter block turned on. That flag lives with the view
-  (`views.view.*`) and stays owned there — the entry only declares a dependency on the
+  (`config.view.<id>`, synced as `views.view.<id>`) and stays owned there — the entry only declares a dependency on the
   view key, and a `--with-deps` export pulls the referenced view alongside the block. The
   flag is never re-modelled on the block entry.
 - **Providing module.** A core-provided plugin (e.g. views, user, block_content, system)

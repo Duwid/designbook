@@ -9,14 +9,62 @@ filter:
   backend: drupal
 ---
 
-# Blueprint: View Mapping — Build-Form Decision
+# Blueprint: View Mapping and Views Config
 
-Applies when `map-entity` runs for a View (`entity_type: view` — a `config.view` bundle). The same
-blueprint also binds the view's Drupal config at `sync-to:transform` through its
+Applies when `map-entity` runs for a View (`entity_type: view` — a `config.view.<id>` bundle). The
+same blueprint also binds the view's Drupal config at `sync-to:transform` through its
 `trigger.config_name: 'views.view.*'` — the config-name binding `form-display` and
 `layout-builder-display` use — so a view binds like the other displays, not by prose alone.
 
-## The view's build form decides its composition
+## A view mapping is a wrapper with view-part bindings
+
+A View has no fields. Its mapping places one **wrapper component** and binds the view's fixed
+parts to the wrapper's props and slots — exactly the `bindings` of the map-entity task. The
+`expected_mapping` from `plan instructions` is the submission.
+
+- `rows` → the wrapper's rows slot. Each row renders the view's `row` bundle in the row view
+  mode; the binding names no `entity`.
+- `title`, `header`, `footer`, `empty` → a prop or a slot of the wrapper; `empty` renders only
+  when the result has no rows.
+- `pager`, `items_per_page`, `page`, `total` → scalar props. The wrapper renders its own pager
+  and count from them; a result count such as "(12)" binds `total` to a prop.
+- `exposed_sorts` → one array prop of `{value, label}` options.
+- `settings` + `path` → a prop fed from the mode's style options (e.g. `columns`).
+
+Config parts read the view's data-model entry as `$view`; result parts read the selected result
+record of `data/view.<id>.yml`. The mapping carries no literals — the data model stays the single
+source of what the view shows.
+
+```jsonata
+(
+  $fields := $;
+  [
+    {
+      "component": "<namespace>:<wrapper>",
+      "props": {
+        "title": $view.title,
+        "count": $exists($fields.total) ? $fields.total : $count($fields.rows)
+      },
+      "slots": {
+        "rows": [$map($fields.rows, function($id) { { "entity": "<row_entity_type>.<row_bundle>", "view_mode": "<row_view_mode>", "record": $lookup(<row pool index>, $string($id)) } })],
+        "empty": $count($fields.rows) = 0 ? $view.empty
+      }
+    }
+  ]
+)
+```
+
+A scene node `entity: view.<id>` selects its displayed state with `record:` — the filled and the
+empty listing are two result records of one view, rendered by the same mapping.
+
+## The view's `template` is its style
+
+`view_modes.default.template` names the view's style (`list-view`, `grid`, …) and its
+`settings` the style options (e.g. `columns`). The wrapper component is chosen by the mapping,
+independent of the style value; the style value and options reach Drupal through the views
+config below.
+
+## The view's build form decides the wrapper owner
 
 A view's `build_form` (the same backend-neutral `template` axis every other surface uses, sourced
 from `entity_mapping.templates`) splits into two branches. Resolve the branch first — it decides
@@ -37,115 +85,61 @@ wrapper to author.
 
 Without a Display Builder build form, the view wrapper **is** a presenter-template: theme methods
 are the only way to produce the wrapper markup, so `sync-to` generates a presenter-template
-(Twig) for it. That presenter-template **composes** the view component — it does not reimplement
-the view — and passes each of the following through as rendered slots, each supplied by its own
-binding rather than reconstructed in the wrapper:
+(Twig) for it. That presenter-template **composes** the wrapper component the view mapping names
+(read from `entity-mapping/view.<id>.<mode>.jsonata`) and fills each bound part from the Drupal
+view:
 
-- **rows** — the enumerated row output (see "Row rendering" below);
-- **empty-state** — the view's no-results presentation;
-- **exposed form** — the exposed-filter form markup;
-- **pager** — the pager markup.
+- **rows** — the rendered rows, into the rows slot;
+- **title / header / footer / empty** — the view title and area output, into their prop or slot;
+- **pager / items_per_page / page / total** — the pager values, as the wrapper's scalar props;
+- **exposed form** — the exposed-filter form markup, when the wrapper has a slot for it.
 
-The presenter-template's only job is composition — routing each already-rendered region into its
-slot. It never rebuilds a region's markup itself.
-
-## Row rendering is its own declarative contract
-
-In both branches, row rendering binds through **UI Patterns**: the view's style/row plugin carries
-the shared `{component_id, variant_id, props, slots}` block, so each row is an SDC component
-render, not a raw view field. This is the declarative half and it stays identical across both
-branches — a view template names it once, on the row/style plugin, and neither branch's wrapper
-(presenter-template or Display Builder config) reconstructs a row component from field output.
-
-So a view declares `template: list-view` (or the project's row-style value) in its
-`config.view.<id>` `view_modes` entry — that value is the UI-Patterns row-style binding, resolved
-the same way regardless of which build-form branch owns the wrapper around it.
+The presenter-template's only job is composition — routing each already-rendered region or value
+into its prop or slot. It never rebuilds a region's markup itself. The pager markup, where the
+theme renders one, comes from its own Pager presenter.
 
 ## Container ownership
 
 Exactly one owner sits beneath the view entity — the Display Builder config owner in that branch,
-or the presenter-template wrapper in the other. A Scene that renders a view as its main content
-carries the view entity **unwrapped**: the Scene node names the view; it does not itself introduce
-a second container around it. Whichever branch applies supplies the one container the rendered
-view lives in.
+or the presenter-template wrapper in the other. A Scene that renders a view carries the view
+entity **unwrapped**: the Scene node names the view; it does not itself introduce a second
+container around it. Whichever branch applies supplies the one container the rendered view lives
+in.
 
-## A view mapping is self-contained
+## A view's display decides its role
 
-A view scene node (`entity: "view.<id>"`, with no `record`/`select`) is resolved with an **empty
-context**: the entity builder evaluates the view mapping against `{}`, not against a sample record.
-So a view mapping MUST be **self-contained** — it enumerates the rows it lists directly and reads
-nothing from `$`. A mapping that dereferences `$` (e.g. `$view.rows`, `$.items_per_page`) resolves
-to empty and the listing renders blank.
+The same view can be a page's main content or beiwerk beside it — its `display` decides:
 
-The rows a view lists are the records of its **row bundle** — the content `entity_type`/`bundle`/
-`view_mode` the view's `row` declares. The `design-screen` intake adds that row bundle to
-`sample_data_bundles`, so its records exist; the mapping then references those records by index.
-Because the rows are real row-bundle records, the entity-mapping validator finds them (no
-"No sample records found") and the same enumeration renders the list.
-
-## JSONata Pattern — flat list
-
-Emit a flat array, one entry per listed row-bundle record. Top-level entries use the
-`{ "type": "entity", … }` form (at the mapping's top level the validator accepts a `component` node
-or a `type: "entity"` node; the `entity: "type.bundle"` string form is a scene-node shorthand, not a
-mapping-output top-level form):
-
-```jsonata
-[
-  { "type": "entity", "entity_type": "<row_entity_type>", "bundle": "<row_bundle>", "view_mode": "<row_view_mode>", "record": 0 },
-  { "type": "entity", "entity_type": "<row_entity_type>", "bundle": "<row_bundle>", "view_mode": "<row_view_mode>", "record": 1 }
-  /* one entry per row-bundle record the view lists */
-]
-```
-
-Each entry renders the row bundle in its listed view-mode; the entity builder resolves each record.
-
-## Optional wrapper (summary)
-
-When a `list-view` / `view-summary` component exists, wrap the same enumerated array in the
-wrapper's `rows` slot — still self-contained (rows are enumerated, never read from `$`):
-
-```jsonata
-{
-  "component": "$DESIGNBOOK_COMPONENT_NAMESPACE:list-view",
-  "slots": {
-    "rows": [
-      { "type": "entity", "entity_type": "<row_entity_type>", "bundle": "<row_bundle>", "view_mode": "<row_view_mode>", "record": 0 },
-      { "type": "entity", "entity_type": "<row_entity_type>", "bundle": "<row_bundle>", "view_mode": "<row_view_mode>", "record": 1 }
-    ]
-  }
-}
-```
-
-The pager region itself binds through its own dedicated binding, not through this wrapper slot.
-
-## A View's Display Type Decides Its Role
-
-The same view can be a page's main content or beiwerk beside it — its **display type** decides:
-
-- A view **page display** owns a route and can be a screen's route-bearing main content.
-- A view **block** (`views_block:*`) owns no route; it is a block that sits beside the main content.
-
-A View that a screen renders as its main content is modelled as a `config.view.<id>` bundle (its own
-`view_modes` entry) so the renderer resolves it; the Drupal config-object name `views.view.<id>`
-stays the sync/export address.
+- `display: page` owns a route (`path`) and can be a screen's route-bearing main content.
+- `display: block` (`views_block:*`) owns no route; it is a block that sits beside the main
+  content.
 
 ## Drupal config export — the `### to_drupal` pattern
 
-At `sync-to:transform` this blueprint authors the `views.view.<id>` config. `prepared` (the
-prepare-fetched schema) is authoritative for the shape; the view's data-model `def` supplies the
-content — base table, row bundle/view-mode, filters, sort, and the row-style template.
+At `sync-to:transform` this blueprint authors `views.view.<id>` from the unit's `def` (the
+`config.view.<id>` entry). `prepared` (the prepare-fetched schema) is authoritative for the shape;
+the mapping below is the starting point, not a fixed key layout.
 
-Bind the view's **row output to its SDC component through the shared UI Patterns block** — the
-`{component_id, variant_id, props, slots}` mechanism (see `ui-patterns.md`): the view's row/style
-plugin carries that block, so a rendered list is a component render — the same UI-Patterns
-manifestation a `field-map` display uses — not a raw view row. The view's row-style `template`
-names the component the rows bind to.
+- `id`, `label` ← the key and `label`; `base_table` / `base_field` ← the `row.entity_type`'s data
+  table and id (e.g. `node_field_data` / `nid`).
+- `display` + `path` → one display beside `default`: `page_1` (`display_plugin: page`, `path`)
+  or `block_1` (`display_plugin: block`).
+- `title` → `display_options.title`.
+- `pager` → `display_options.pager`: `type` (`full`, `mini`; `none` with `items_per_page` becomes
+  `some`) and `options.items_per_page`.
+- `empty`, `header`, `footer` → an `area_text_custom` handler each under `display_options.empty`,
+  `header`, `footer`.
+- `sorts` → `display_options.sorts`, one handler per entry with `order`; an exposed sort sets
+  `exposed: true` and `expose.label`.
+- `filters` → `display_options.filters`, one handler per field (e.g. `status`, `type` for the
+  row bundle).
+- `row` → `display_options.row`: plugin `entity:<row.entity_type>` with
+  `options.view_mode: <row.view_mode>`; the row bundle's own display renders each row.
+- `view_modes.default.template` + `settings` → `display_options.style`: the style plugin that
+  renders the wrapper component of the view mapping through UI Patterns
+  (`{component_id, variant_id, props, slots}`, rows into the rows slot), with `settings` as its
+  options.
 
-This authors only the **UI-Patterns half** (the row style). Which unit emits the **wrapper** —
-the Display Builder page config, or a generated presenter-template with pager and exposed filter
-passed through as slots — follows the build-form branch above. A view is the combination of the
-row-style config and its wrapper; neither half is a whole view on its own.
-
-The concrete config keys come from `prepared`; treat the row-binding intent here as the starting
-point, not a fixed key layout.
+Which unit emits the **wrapper** — the Display Builder page config, or a generated
+presenter-template — follows the build-form branch above. Result records in `data/view.<id>.yml`
+are sample data for the render and never sync.

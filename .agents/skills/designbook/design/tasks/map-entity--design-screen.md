@@ -26,14 +26,16 @@ params:
     component:
       type: string
       description: >
-        Qualified target component ID (`namespace:name`) for a field-map mapping.
+        Qualified target component ID (`namespace:name`) for a field-map mapping, or the wrapper
+        component of a View mapping.
         Omitted when the mapped bundle carries a `component_tree` field — that tree
         is the composition, passed through from sample records.
       examples: [test_integration_vue:signage]
     bindings:
       type: array
       description: >
-        Field-to-prop and field-to-slot bindings for the target component.
+        Field-to-prop and field-to-slot bindings for the target component; for a View, view-part
+        bindings (see MappingBinding).
         Empty or omitted when the mapped bundle carries a `component_tree` field.
       items:
         $ref: ../schemas.yml#/MappingBinding
@@ -53,7 +55,7 @@ result:
 
 # Map Entity
 
-Produce the complete mapping expression for the one entity type, bundle and mode selected by `mapping`. A field-map mapping targets `component` and binds exactly the listed `bindings`. A mapping whose bundle has a `component_tree` field passes that field through from the sample records. Apply the requested field-output delta to the existing expression when present, preserving unrelated assignments and references.
+Produce the complete mapping expression for the one entity type, bundle and mode selected by `mapping`. A field-map mapping targets `component` and binds exactly the listed `bindings`. A View mapping (`config.view.<id>`) targets its wrapper `component` and binds view parts, rendering the rows of each result record in the view's row bundle and view mode. A mapping whose bundle has a `component_tree` field passes that field through from the sample records. Apply the requested field-output delta to the existing expression when present, preserving unrelated assignments and references.
 
 Retain other view/form modes, bundles, model/display settings and sample records. Any necessary model, sample or consumer changes are separate outputs/tasks declared by intake. Reuse components that already satisfy the mapping.
 

@@ -142,7 +142,7 @@ EntityNode:
       description: >
         A single entity as `entity_type.bundle` (e.g. `node.article`), or a View — a listing —
         as `view.<id>` (e.g. `view.landing_teasers`). `view.<id>` is the address for any listing
-        of multiple contents; the renderer resolves the view's rows.
+        of multiple contents; its mapping renders the rows of the selected result record.
       examples: ["node.article", "view.landing_teasers"]
     view_mode:
       type: string
@@ -150,7 +150,9 @@ EntityNode:
     record:
       type: integer
       default: 0
-      description: Sample data record index.
+      description: >
+        Sample data record index. For a View it indexes the view's result records in
+        `data/view.<id>.yml` — the displayed state, e.g. 0 = filled, 1 = empty.
     records:
       type: array
       items: { type: integer }
