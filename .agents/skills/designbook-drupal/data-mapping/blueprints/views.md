@@ -27,7 +27,8 @@ parts to the wrapper's props and slots — exactly the `bindings` of the map-ent
 - `title`, `header`, `footer`, `empty` → a prop or a slot of the wrapper; `empty` renders only
   when the result has no rows.
 - `pager`, `items_per_page`, `page`, `total` → scalar props. The wrapper renders its own pager
-  and count from them; a result count such as "(12)" binds `total` to a prop.
+  and count from them; a result count such as "(12)" binds `total` to a prop. Only a `full`
+  pager or a view that shows every row has a total to bind.
 - `exposed_sorts` → one array prop of `{value, label}` options.
 - `settings` + `path` → a prop fed from the mode's style options (e.g. `columns`).
 
@@ -57,18 +58,19 @@ source of what the view shows.
 A scene node `entity: view.<id>` selects its displayed state with `record:` — the filled and the
 empty listing are two result records of one view, rendered by the same mapping.
 
-## The view's `template` is its style
+## The view's `template`: style or build form
 
-`view_modes.default.template` names the view's style (`list-view`, `grid`, …) and its
-`settings` the style options (e.g. `columns`). The wrapper component is chosen by the mapping,
-independent of the style value; the style value and options reach Drupal as the Views style in
-the config below, and the wrapper reaches Drupal through the build-form owner.
+`view_modes.default.template` holds one value with two readings. A **style value** (`list-view`,
+`grid`, …) names the Views style, with `settings` as its options (e.g. `columns`). A **build-form
+value** from `entity_mapping.templates` (e.g. `canvas`) selects the Display Builder branch below;
+it names no Views style, so the style falls to `default` (unformatted list) deliberately. The
+wrapper component is chosen by the mapping, independent of either value, and reaches Drupal
+through the build-form owner.
 
 ## The view's build form decides the wrapper owner
 
-A view's `build_form` (the same backend-neutral `template` axis every other surface uses, sourced
-from `entity_mapping.templates`) splits into two branches. Resolve the branch first — it decides
-whether a view-presenter exists at all.
+A view's `build_form` is its `template` read as a build-form value. It splits into two branches.
+Resolve the branch first — it decides whether a view-presenter exists at all.
 
 ### Branch: Display Builder
 
@@ -91,7 +93,13 @@ view:
 
 - **rows** — the rendered rows, into the rows slot;
 - **title / header / footer / empty** — the view title and area output, into their prop or slot;
-- **pager / items_per_page / page / total** — the pager values, as the wrapper's scalar props;
+- **pager** — the Views pager plugin mapped back to the ViewBundle value: `full` → `full`,
+  `mini` → `mini`, `some` and `none` → `none`; the plugin id never passes through raw;
+- **items_per_page** — the pager's items per page, left out when it is 0 (unlimited);
+- **page** — the zero-based current page;
+- **total** — with a `full` pager, the counted `total_rows`; with an unlimited view (`none`
+  without `items_per_page`), the number of result rows, since every row is shown. Other pagers
+  count nothing, so the mapping never binds `total` for them;
 - **exposed form** — the exposed-filter form markup, when the wrapper has a slot for it.
 
 The presenter-template's only job is composition — routing each already-rendered region or value
@@ -126,7 +134,7 @@ the mapping below is the starting point, not a fixed key layout.
   or `block_1` (`display_plugin: block`).
 - `title` → `display_options.title`.
 - `pager` → `display_options.pager`: `type` (`full`, `mini`; `none` with `items_per_page` becomes
-  `some`) and `options.items_per_page`.
+  `some`) and `options.items_per_page`. A view without `pager` shows every row (`none`).
 - `empty`, `header`, `footer` → an `area_text_custom` handler each under `display_options.empty`,
   `header`, `footer`.
 - `sorts` → `display_options.sorts`, one handler per entry with `order`; an exposed sort sets
@@ -136,10 +144,10 @@ the mapping below is the starting point, not a fixed key layout.
 - `row` → `display_options.row`: plugin `entity:<row.entity_type>` with
   `options.view_mode: <row.view_mode>`; the row bundle's own display renders each row.
 - `view_modes.default.template` + `settings` → `display_options.style`: the Views style the
-  template names — `grid` → `grid` with `columns` from `settings`; every other list style
-  (e.g. `list-view`) → `default` (unformatted list). Further `settings` keys become style
-  options. The style is decided by the view entry alone; the wrapper component of the view
-  mapping is not a style plugin.
+  template names — `grid` → `grid` with `columns` from `settings`; every other value (a list
+  style such as `list-view`, or a build-form value such as `canvas`) → `default` (unformatted
+  list). Further `settings` keys become style options. The style is decided by the view entry
+  alone; the wrapper component of the view mapping is not a style plugin.
 
 Which unit emits the **wrapper** — the Display Builder page config, or a generated
 presenter-template — follows the build-form branch above. Result records in `data/view.<id>.yml`

@@ -156,8 +156,9 @@ ViewBundle:
     pager:
       type: object
       description: >-
-        Paging. `full` numbers the pages, `mini` shows previous/next only, `none` shows every row —
-        or, with `items_per_page`, a fixed number of rows.
+        Paging. `full` numbers the pages and counts the result total, `mini` shows previous/next
+        only, `none` shows every row — or, with `items_per_page`, a fixed number of rows. A view
+        without `pager` shows every row. Only `full` and a view showing every row have a total.
       required: [type]
       additionalProperties: false
       properties:
@@ -210,7 +211,9 @@ ViewBundle:
       type: object
       description: >-
         Display modes of the view; `default` is required. `template` is the view's style value
-        (e.g. list-view, grid) and `settings` its style options (e.g. columns).
+        (e.g. list-view, grid) with `settings` as its style options (e.g. columns), or a
+        build-form value from `entity_mapping.templates` (e.g. canvas) that hands the view to the
+        backend's page builder.
       required: [default]
       additionalProperties:
         type: object

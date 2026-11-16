@@ -54,7 +54,9 @@ set to previous/next only.
 **Never invent a total item count, a total page count, or a "page X of Y" string when the theme
 hook does not supply one.** If the source data does not carry a total, the pager mapping renders
 only from the values the hook exposes — first/previous/pages/next/last links and the current
-indicator — and leaves any "of N" affordance out rather than computing or guessing it.
+indicator — and leaves any "of N" affordance out rather than computing or guessing it. This
+concerns the Pager SDC and its theme hook; the `total` view part of a view mapping is the view's
+counted result total and binds through the view wrapper instead.
 
 ## Infinite Scroll vs. a Hand-Placed Load-More Control
 
