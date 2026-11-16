@@ -61,8 +61,8 @@ empty listing are two result records of one view, rendered by the same mapping.
 
 `view_modes.default.template` names the view's style (`list-view`, `grid`, …) and its
 `settings` the style options (e.g. `columns`). The wrapper component is chosen by the mapping,
-independent of the style value; the style value and options reach Drupal through the views
-config below.
+independent of the style value; the style value and options reach Drupal as the Views style in
+the config below, and the wrapper reaches Drupal through the build-form owner.
 
 ## The view's build form decides the wrapper owner
 
@@ -135,10 +135,11 @@ the mapping below is the starting point, not a fixed key layout.
   row bundle).
 - `row` → `display_options.row`: plugin `entity:<row.entity_type>` with
   `options.view_mode: <row.view_mode>`; the row bundle's own display renders each row.
-- `view_modes.default.template` + `settings` → `display_options.style`: the style plugin that
-  renders the wrapper component of the view mapping through UI Patterns
-  (`{component_id, variant_id, props, slots}`, rows into the rows slot), with `settings` as its
-  options.
+- `view_modes.default.template` + `settings` → `display_options.style`: the Views style the
+  template names — `grid` → `grid` with `columns` from `settings`; every other list style
+  (e.g. `list-view`) → `default` (unformatted list). Further `settings` keys become style
+  options. The style is decided by the view entry alone; the wrapper component of the view
+  mapping is not a style plugin.
 
 Which unit emits the **wrapper** — the Display Builder page config, or a generated
 presenter-template — follows the build-form branch above. Result records in `data/view.<id>.yml`
