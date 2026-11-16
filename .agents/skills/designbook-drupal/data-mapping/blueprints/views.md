@@ -98,8 +98,9 @@ view:
 - **items_per_page** — the pager's items per page, left out when it is 0 (unlimited);
 - **page** — the zero-based current page;
 - **total** — with a `full` pager, the counted `total_rows`; with an unlimited view (`none`
-  without `items_per_page`), the number of result rows, since every row is shown. Other pagers
-  count nothing, so the mapping never binds `total` for them;
+  without `items_per_page`), the number of result rows, since every row is shown. `mini` and
+  `some` run no count query, so `total_rows` is not the result size and the mapping never binds
+  `total` for them;
 - **exposed form** — the exposed-filter form markup, when the wrapper has a slot for it.
 
 The presenter-template's only job is composition — routing each already-rendered region or value
