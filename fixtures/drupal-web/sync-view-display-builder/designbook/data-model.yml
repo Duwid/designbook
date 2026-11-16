@@ -18,49 +18,41 @@
 # DESIGNBOOK-6's config-only e2e decision): import + validate against a ui_patterns-capable
 # Drupal, no content provisioning, no rendered-page assertion.
 config:
-  # The view a screen renders as its route-bearing main content. Declared like every display: a
-  # config.view.<id> with its own view_modes.default.template — here `canvas` (the Display
-  # Builder build form), not `list-view`. The row-style UI-Patterns binding stays identical
-  # across both build-form branches (views.md, "Row rendering is its own declarative contract").
+  # The view a screen renders as its route-bearing main content, declared once (ViewBundle): the
+  # same entry drives the Storybook render and the views.view.articles sync.
+  # Its template canvas is the Display Builder form. The rows it shows are the result records in
+  # data/view.articles.yml.
   view:
     articles:
       label: Articles
+      purpose: >
+        Lists node.article entities in the teaser view mode as the screen's sole route-bearing
+        main content. Its build form IS Display Builder (view_modes.default.template: canvas) —
+        the with-Display-Builder branch: the view binds directly through the Display Builder page
+        config, so sync-to generates NO View-Presenter (no views-view*.html.twig wrapper). The
+        pager region still binds through its own Pager-Presenter that calls the Pager SDC.
+      display: page
+      path: /articles
+      title: Articles
       row:
         entity_type: node
         bundle: article
         view_mode: teaser
+      # Paginated: a standard (full) pager over 2 items per page, so the pager region is present
+      # and exercises the standard-pager configuration (page-link list + current indicator).
+      pager:
+        type: full
+        items_per_page: 2
+      empty: No articles yet.
+      sorts:
+        - field: created
+          order: DESC
+      filters:
+        type: article
+        status: 1
       view_modes:
         default:
           template: canvas
-  views.view.articles:
-    label: Articles
-    purpose: >
-      Lists node.article entities in the teaser view-mode as the screen's sole route-bearing main
-      content. Its build form IS Display Builder (view_modes.default.template: canvas) — per the
-      V-4 matrix this puts it in the with-Display-Builder branch: the view binds directly through
-      the Display Builder page config, so sync-to generates NO View-Presenter (no
-      views-view*.html.twig wrapper) — this fixture asserts that absence. The pager region still
-      binds through its own dedicated Pager-Presenter (V-5), build-form-independent, that calls
-      the Pager SDC.
-    base_table: node_field_data
-    row:
-      entity_type: node
-      bundle: article
-      view_mode: teaser
-    filters:
-      type: article
-      status: 1
-    sort:
-      created: DESC
-    # Paginated: a standard (full) pager over 2 items per page, so the pager region is present
-    # and exercises the standard-pager configuration (page-link list + current indicator) —
-    # identical to Task 8's fixture, since the pager is build-form-independent.
-    pager:
-      type: full
-      items_per_page: 2
-    view_modes:
-      default:
-        template: canvas
 content:
   node:
     article:

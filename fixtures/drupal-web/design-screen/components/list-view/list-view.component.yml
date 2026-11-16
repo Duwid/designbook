@@ -1,0 +1,34 @@
+$schema: https://git.drupalcode.org/project/drupal/-/raw/HEAD/core/assets/schemas/v1/metadata.schema.json
+name: List View
+status: experimental
+group: Data Display
+description: >
+  View wrapper — the view's title and result count above its rendered rows, the empty text when
+  the result has no rows.
+provider: test_integration_drupal
+thirdPartySettings:
+  sdcStorybook:
+    disableBasicStory: true
+props:
+  type: object
+  properties:
+    title:
+      title: Title
+      type: string
+      description: The view title.
+    total:
+      title: Total
+      type: integer
+      description: Result count across all pages.
+    pager:
+      title: Pager
+      type: string
+      enum: [full, mini, none]
+      description: Pager kind of the view.
+slots:
+  rows:
+    title: Rows
+    description: The rendered rows — one row-bundle record each, in the row view mode.
+  empty:
+    title: Empty
+    description: Text shown when the result has no rows.

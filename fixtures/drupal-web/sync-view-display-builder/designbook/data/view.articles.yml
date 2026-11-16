@@ -1,0 +1,9 @@
+# Result records of the articles View — one per displayed state. `rows` lists node.article
+# ids of designbook/data/node.article.yml; the scene node selects the state with `record:`.
+# Design-time only: result records never sync.
+- id: filled
+  rows: ['1', '2']
+  total: 3
+  page: 0
+- id: empty
+  rows: []

@@ -1,10 +1,19 @@
-{
-  "component": "test_integration_drupal:list-view",
-  "slots": {
-    "rows": [
-      { "type": "entity", "entity_type": "node", "bundle": "article", "view_mode": "teaser", "record": 0 },
-      { "type": "entity", "entity_type": "node", "bundle": "article", "view_mode": "teaser", "record": 1 },
-      { "type": "entity", "entity_type": "node", "bundle": "article", "view_mode": "teaser", "record": 2 }
-    ]
-  }
-}
+(
+  $fields := $;
+  [
+    {
+      "component": "test_integration_drupal:list-view",
+      "props": {
+        "title": $view.title,
+        "pager": $view.pager.type,
+        "items_per_page": $view.pager.items_per_page,
+        "page": $fields.page,
+        "total": $exists($fields.total) ? $fields.total : $count($fields.rows)
+      },
+      "slots": {
+        "rows": [$map($fields.rows, function($id) { { "entity": "node.article", "view_mode": "teaser", "record": $lookup({"1":0,"2":1,"3":2}, $string($id)) } })],
+        "empty": $count($fields.rows) = 0 ? $view.empty
+      }
+    }
+  ]
+)

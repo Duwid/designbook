@@ -1,0 +1,20 @@
+<section{{ attributes.addClass([
+  'list-view',
+  'flex',
+  'flex-col',
+  'gap-[var(--grid-md)]',
+]) }}>
+  {% if title %}
+    <h2 class="list-view__title font-heading text-foreground">
+      {{ title }}{% if total is not null %} <span class="text-secondary">({{ total }})</span>{% endif %}
+    </h2>
+  {% endif %}
+  {% if rows %}
+    <div class="list-view__rows grid gap-[var(--grid-md)] sm:grid-cols-2 lg:grid-cols-3">
+      {{ rows }}
+    </div>
+  {% endif %}
+  {% if empty %}
+    <p class="list-view__empty font-body text-secondary">{{ empty }}</p>
+  {% endif %}
+</section>

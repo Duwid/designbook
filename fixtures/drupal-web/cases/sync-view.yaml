@@ -5,15 +5,33 @@ fixtures:
 
 prompt: |
   You are working in the directory {{workspace}}.
-  Run the /debo sync-to workflow to export the
-  views.view.landing_teasers config to Drupal config.
-  Filter the export to config_key=views.view.landing_teasers. Author the
+  Run the /debo sync-to workflow to export the landing_teasers View
+  (data-model config.view.landing_teasers) as the views.view.landing_teasers
+  config to Drupal config.
+  Filter the export to config_key=view.landing_teasers. Author the
   per-config-name JSONata against the prepare-fetched schema, write the config
   YAML, validate, and run drush config:import. Do NOT ask any questions; if a
   decision cannot be made from the data model + fixtures, fail the run.
 
 expected_config:
   - views.view.landing_teasers
+
+assert:
+  # The one config.view declaration drives the export: title, pager and empty text reach the
+  # views.view config.
+  - type: javascript
+    value: |
+      const path = Object.keys(output.fileContents).find((p) => /files\/sync\/views\.view\.landing_teasers\.yml$/.test(p));
+      const cfg = path && output.fileContents[path];
+      if (!cfg || typeof cfg !== 'object') return false;
+      const displays = Object.values(cfg.display || {});
+      const opts = displays.map((d) => d?.display_options || {});
+      const title = opts.some((o) => o.title === 'Landing pages');
+      const pager = opts.some((o) => o.pager?.type === 'full' && o.pager?.options?.items_per_page === 6);
+      const empty = opts.some((o) => JSON.stringify(o.empty || {}).includes('No landing pages yet.'));
+      return title && pager && empty;
+  - type: javascript
+    value: output.completedWorkflows['sync-to']?.state?.status === 'completed'
 
 metric: |
   (

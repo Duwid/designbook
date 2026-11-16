@@ -13,3 +13,4 @@ scenes:
           content:
             - entity: view.landing_teasers
               view_mode: default
+              record: 0

@@ -5,8 +5,8 @@
 # (designbook-drupal/data-mapping/blueprints/views.md), that puts the view in the
 # "without Display Builder" branch:
 #   - the view wrapper has no Display-Builder page config to bind through, so sync-to generates
-#     a View-Presenter (a presenter-template composing the view's rows/empty-state/exposed-form/
-#     pager as incoming slots);
+#     a View-Presenter (a presenter-template composing the view mapping's wrapper: rows and empty
+#     text as slots, the pager values as props);
 #   - the pager region binds through its own dedicated Pager blueprint (V-5) independent of the
 #     build-form branch — a Pager-Presenter that calls the Pager SDC
 #     (components/blueprints/pager.md), never reconstructing page-link markup inline.
@@ -15,47 +15,41 @@
 # DESIGNBOOK-6's config-only e2e decision): import + validate against a ui_patterns-capable
 # Drupal, no content provisioning, no rendered-page assertion.
 config:
-  # The view a screen renders as its route-bearing main content. Declared like every display: a
-  # config.view.<id> with its own view_modes.default.template: list-view (the row-style
-  # UI-Patterns binding — see "Row rendering is its own declarative contract" in views.md).
+  # The view a screen renders as its route-bearing main content, declared once (ViewBundle): the
+  # same entry drives the Storybook render and the views.view.articles sync.
+  # Its template list-view is not a Display Builder form. The rows it shows are the result records in
+  # data/view.articles.yml.
   view:
     articles:
       label: Articles
+      purpose: >
+        Lists node.article entities in the teaser view mode as the screen's sole route-bearing
+        main content. Its build form is NOT Display Builder (view_modes.default.template:
+        list-view) — the without-Display-Builder branch: sync-to generates a View-Presenter that
+        composes the wrapper component of the view mapping (rows, empty text and pager values),
+        plus a separate Pager-Presenter that calls the Pager SDC.
+      display: page
+      path: /articles
+      title: Articles
       row:
         entity_type: node
         bundle: article
         view_mode: teaser
+      # Paginated: a standard (full) pager over 2 items per page, so the pager region is present
+      # and exercises the standard-pager configuration (page-link list + current indicator).
+      pager:
+        type: full
+        items_per_page: 2
+      empty: No articles yet.
+      sorts:
+        - field: created
+          order: DESC
+      filters:
+        type: article
+        status: 1
       view_modes:
         default:
           template: list-view
-  views.view.articles:
-    label: Articles
-    purpose: >
-      Lists node.article entities in the teaser view-mode as the screen's sole route-bearing main
-      content. Its build form is NOT Display Builder (view_modes.default.template: list-view, not
-      canvas/layout-builder) — per the V-4 matrix this puts it in the without-Display-Builder
-      branch: sync-to generates a View-Presenter (view-wrapper presenter-template) with
-      rows/empty-state/exposed-form/pager passed through as rendered slots, plus a separate
-      Pager-Presenter (V-5) that calls the Pager SDC — the pager binds through its own dedicated
-      blueprint regardless of build-form.
-    base_table: node_field_data
-    row:
-      entity_type: node
-      bundle: article
-      view_mode: teaser
-    filters:
-      type: article
-      status: 1
-    sort:
-      created: DESC
-    # Paginated: a standard (full) pager over 2 items per page, so the pager region is present
-    # and exercises the standard-pager configuration (page-link list + current indicator).
-    pager:
-      type: full
-      items_per_page: 2
-    view_modes:
-      default:
-        template: list-view
 content:
   node:
     article:

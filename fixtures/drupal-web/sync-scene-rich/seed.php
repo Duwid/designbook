@@ -11,7 +11,7 @@
  * 3. Creates the landing_teasers View's row content — one node.landing_page per sample record
  *    (field_short_title matches designbook/data/node.landing_page.yml). Without these the
  *    views_block lists nothing and the rendered list is empty; AC9 needs a *rendered* list, so
- *    the live View must list the same rows the Storybook reference enumerates
+ *    the live View must list the same rows the Storybook reference renders
  *    (view.landing_teasers.default.jsonata → list-view wrapper → card rows).
  *
  * sync-to synchronises CONFIG only: node.landing.full has LB enabled + empty default

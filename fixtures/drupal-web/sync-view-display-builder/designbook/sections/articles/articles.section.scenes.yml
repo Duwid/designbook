@@ -18,7 +18,8 @@ scenes:
         with:
           content:
             # The View is the page: it is the single main content in the shell's content slot.
-            # A View node is self-contained in its DATA — no `record`/`select` — so its mapping
-            # evaluates against {} and enumerates the row-bundle records itself.
+            # `record` selects its displayed state — result record 0 (`filled`) of
+            # data/view.articles.yml, whose rows the view mapping renders.
             - entity: view.articles
               view_mode: default
+              record: 0

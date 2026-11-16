@@ -28,8 +28,14 @@ content:
 config:
   view:
     recent_articles:
+      label: Recent Articles
+      purpose: A view listing recent articles.
+      display: block
       title: Recent Articles
-      description: A view listing recent articles.
+      row:
+        entity_type: node
+        bundle: article
+        view_mode: teaser
       view_modes:
         default:
-          template: field-map
+          template: list-view

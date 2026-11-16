@@ -6,22 +6,30 @@ config:
       aspect_ratio: '4:3'
     ratio_1_1:
       aspect_ratio: '1:1'
-  views.view.landing_teasers:
-    label: Landing teasers
-    purpose: >
-      A view that lists node.landing_page entities rendered in the teaser
-      view-mode, embedded on the article page. This is the view-mapping path
-      the sync eval exercises.
-    base_table: node_field_data
-    row:
-      entity_type: node
-      bundle: landing_page
-      view_mode: teaser
-    filters:
-      type: landing_page
-      status: 1
-    sort:
-      created: DESC
+  view:
+    landing_teasers:
+      label: Landing teasers
+      purpose: >
+        Lists node.landing_page entities in the teaser view mode, placed as a block on the article
+        page.
+      display: block
+      title: Landing pages
+      row:
+        entity_type: node
+        bundle: landing_page
+        view_mode: teaser
+      pager:
+        type: none
+        items_per_page: 3
+      sorts:
+        - field: created
+          order: DESC
+      filters:
+        type: landing_page
+        status: 1
+      view_modes:
+        default:
+          template: list-view
   block_plugin:
     # DESIGNBOOK-36 open-config probe. This entry is deliberately shaped to VIOLATE
     # the DESIGNBOOK-30 `#/BlockPlugin` schema on every axis it enforced:

@@ -1,0 +1,11 @@
+# Result records of the landing_teasers View — one per displayed state. `rows` lists
+# node.landing_page ids; the scene node selects the state with `record:`.
+- id: filled
+  rows: ['1', '2', '3', '4', '5', '6']
+  total: 6
+  __designbook:
+    section: startseite
+- id: empty
+  rows: []
+  __designbook:
+    section: startseite

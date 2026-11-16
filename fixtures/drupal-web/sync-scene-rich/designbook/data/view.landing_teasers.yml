@@ -1,0 +1,4 @@
+# Result records of the landing_teasers View — one per displayed state. `rows` lists the
+# node.landing_page ids of data/node.landing_page.yml that the seeded live view lists too.
+- id: filled
+  rows: ['1', '2', '3']

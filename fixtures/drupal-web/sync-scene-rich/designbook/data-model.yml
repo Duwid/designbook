@@ -12,50 +12,44 @@
 # Exercises the new sync-to paths in one Layout-Builder Scene:
 #   - a block_content block (hero)               → block-decision ⇒ block_content
 #   - a block_plugin block (the view as a block) → block-decision ⇒ block_plugin
-#   - an embedded view with template: list-view  → view-template (UI-Patterns rows) whose wrapper
-#     (pager / exposed filter) is theme-methods-only → presenter-template (the presenter surface here)
+#   - an embedded view with template: list-view  → views config (rows through the row bundle's
+#     display) whose wrapper is theme-methods-only → presenter-template (the presenter surface here)
 # The row bundle (node.landing_page teaser) supplies the view's rows.
 config:
-  # The view a screen renders / a scene embeds as a block. Declared like every display:
-  # a config.view.<id> with its own view_modes.default.template: list-view (the view-template).
+  # The view this scene embeds as a block, declared once (ViewBundle): the same entry drives the
+  # Storybook render and the views.view.landing_teasers sync (display: block → its block_1 Block
+  # display). The rows it shows are the result records in data/view.landing_teasers.yml.
   view:
     landing_teasers:
       label: Landing teasers
+      purpose: >
+        Lists node.landing_page entities in the teaser view mode, placed as a block_plugin on the
+        landing page. Its rows render through the row bundle's teaser display; its wrapper is the
+        list-view component of the view mapping, a theme-methods-only presenter surface.
+      display: block
+      title: Landing teasers
       row:
         entity_type: node
         bundle: landing_page
         view_mode: teaser
+      pager:
+        type: none
+        items_per_page: 3
+      sorts:
+        - field: created
+          order: DESC
+      filters:
+        type: landing_page
+        status: 1
       view_modes:
         default:
           template: list-view
-  views.view.landing_teasers:
-    label: Landing teasers
-    purpose: >
-      Lists node.landing_page entities in the teaser view-mode. Owns a page display and can be a
-      screen's route-bearing main content; here it is also placed as a block_plugin on the landing
-      page. Its rows bind to their SDC component via UI Patterns; its pager/exposed-filter are
-      theme-methods-only presenter surfaces.
-    base_table: node_field_data
-    row:
-      entity_type: node
-      bundle: landing_page
-      view_mode: teaser
-    filters:
-      type: landing_page
-      status: 1
-    sort:
-      created: DESC
-    view_modes:
-      default:
-        template: list-view
   # A view rendered as a block reaches the page as a block_plugin (a plugin placement), not a route.
-  # A `views_block:<view>-<display>` plugin needs the view to expose that Block display. This open
-  # view config carries only `view_modes.default`; the `block_1` Block display is authored on
-  # `views.view.landing_teasers` at sync time by the views blueprint (validated live: after
-  # config:import the block manager resolves `views_block:landing_teasers-block_1`, and the seeded
-  # override renders it). Note the Block display INHERITS its options from `default` and carries no
-  # `defaults` map — Drupal types that key as a flat option->boolean map, so a nested entry there
-  # aborts config:import.
+  # A `views_block:<view>-<display>` plugin needs the view to expose that Block display: the view's
+  # `display: block` becomes the `block_1` Block display of `views.view.landing_teasers` at sync
+  # time (the views blueprint). Note the Block display INHERITS its options from `default` and
+  # carries no `defaults` map — Drupal types that key as a flat option->boolean map, so a nested
+  # entry there aborts config:import.
   block_plugin:
     landing_teasers_block:
       plugin: 'views_block:landing_teasers-block_1'
