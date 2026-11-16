@@ -231,6 +231,7 @@ ViewBundle:
             description: Style options of this mode; each style defines its keys (e.g. columns).
             additionalProperties: true
   if:
+    required: [display]
     properties:
       display: { const: page }
   then:
