@@ -19,6 +19,7 @@ import type {
   EntityOrigin,
 } from '../types';
 import { extractFieldMappings } from '../jsonata-mapping-analyzer';
+import { viewBindingsFor } from '../../shared/view-bindings';
 
 /**
  * Placeholder ComponentNode returned when JSONata file or sample data is missing.
@@ -94,8 +95,8 @@ export const entityBuilder: SceneNodeBuilder = {
     //    (title, pager, empty text, …) through `$view`, the view's data-model entry.
     const source = readFileSync(jsonataPath, 'utf-8');
     const expr = jsonata(source);
-    const view = entity_type === 'view' ? ctx.dataModel.config?.view?.[bundle] : undefined;
-    const result = await expr.evaluate(recordData, view ? { view } : undefined);
+    const bindings = viewBindingsFor(ctx.dataModel as unknown as Record<string, unknown>, entity_type, bundle);
+    const result = await expr.evaluate(recordData, bindings);
 
     // 3b. Extract field mappings from the JSONata AST
     let fieldMappings: FieldMapping[] | undefined;

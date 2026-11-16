@@ -7,7 +7,7 @@ import jsonata from 'jsonata';
 import { load as parseYaml } from 'js-yaml';
 import type { Plan, PlanTask } from './plan-document.js';
 import { componentTreeFields, imageFieldStyle, overlaySampleRecords } from './plan-composition.js';
-import { compileViewMapping, viewDef, type ViewDef } from './view-mapping.js';
+import { compileViewMapping, viewBindingsFor, viewDef, type ViewDef } from './view-mapping.js';
 
 interface Binding {
   field: string;
@@ -338,7 +338,10 @@ async function evaluateViewResults(
     const values: Record<string, unknown> = { id: rec.id, ...(rec.values ?? {}) };
     let out: unknown;
     try {
-      out = await compiled.evaluate(values, { view });
+      out = await compiled.evaluate(
+        values,
+        viewBindingsFor(plan.composition?.data_model ?? {}, 'view', mapping.bundle),
+      );
     } catch (err: unknown) {
       errors.push(
         `jsonata evaluation failed for result ${rec.id}: ${err instanceof Error ? err.message : String(err)}`,
@@ -354,7 +357,11 @@ async function evaluateViewResults(
       );
     }
     if (!rowsSlot) continue;
-    const ids = Array.isArray(values.rows) ? values.rows : values.rows == null ? [] : [values.rows];
+    if (!Array.isArray(values.rows)) {
+      errors.push(`result ${rec.id}: rows must be an array of row ids`);
+      continue;
+    }
+    const ids = values.rows;
     const actual = node?.slots?.[rowsSlot];
     const items = Array.isArray(actual) ? actual : [];
     if (items.length !== ids.length) {

@@ -170,6 +170,38 @@ describe('view mappings — binding errors', () => {
     expect(await errorsOf(l)).toContain(`${at} bindings[1].slot: view part total binds a prop, not a slot`);
   });
 
+  it.each([
+    ['mini', { type: 'mini', items_per_page: 10 }, 'mini with items_per_page'],
+    ['none with items_per_page', { type: 'none', items_per_page: 3 }, 'none with items_per_page'],
+  ])('rejects total when the %s pager counts no total', async (_label, pager, shown) => {
+    const l = list();
+    viewOf(l).pager = pager;
+    expect(await errorsOf(l)).toContain(
+      `${at} bindings[1].field: view.contacts pager ${shown} counts no total; bind total only with pager full or a view that shows every row`,
+    );
+  });
+
+  it.each([
+    ['none without items_per_page', { type: 'none' }],
+    ['no pager', undefined],
+  ])('accepts total when the view shows every row (%s)', async (_label, pager) => {
+    const l = list();
+    if (pager) viewOf(l).pager = pager;
+    else delete viewOf(l).pager;
+    const own = task(l, 'map-entity', 'contacts');
+    own.params!.bindings = viewBindings(l).filter((b) => !['pager', 'items_per_page', 'page'].includes(b.field));
+    await build(l);
+  });
+
+  it('rejects a result record whose rows is not an array', async () => {
+    const l = list();
+    const records = task(l, 'create-sample-data', 'contacts').params!.records as Array<{
+      values: { rows: unknown };
+    }>;
+    records[0]!.values.rows = 'contacts-1';
+    expect(await errorsOf(l)).toContain(`${at} mapping: view.contacts result filled: rows must be an array of row ids`);
+  });
+
   it('rejects a view whose row mapping is neither planned nor reused', async () => {
     const l = list();
     l.tasks = l.tasks.filter((t) => !(t.step === 'map-entity' && t.title === 'contact'));

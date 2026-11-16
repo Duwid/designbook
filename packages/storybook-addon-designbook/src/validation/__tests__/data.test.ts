@@ -86,4 +86,10 @@ describe('validateData', () => {
     expect(result.valid).toBe(true);
     expect(result.warnings).toEqual(['Broken row: view.recent_articles id=filled rows → node.article id=99 not found']);
   });
+
+  it('rejects a view result record whose rows is not an array', () => {
+    const result = validateData(validDataModel, resolve(fixtures, 'invalid-view-rows', 'data'));
+    expect(result.valid).toBe(false);
+    expect(result.errors).toEqual(['View result view.recent_articles id=filled: rows must be an array of row ids']);
+  });
 });

@@ -4,6 +4,9 @@
  * result values read from the selected `data/view.<id>.yml` record — to one wrapper component.
  */
 import type { PlanTask } from './plan-document.js';
+import type { ViewDef, ViewRow } from '../shared/view-bindings.js';
+
+export { viewBindingsFor, viewDef, type ViewDef, type ViewRow, type ViewSort } from '../shared/view-bindings.js';
 
 export interface ViewBinding {
   field: string;
@@ -11,36 +14,6 @@ export interface ViewBinding {
   slot?: string;
   path?: string[];
   entity?: { entity_type: string; bundle: string; view_mode: string };
-}
-
-export interface ViewRow {
-  entity_type: string;
-  bundle: string;
-  view_mode: string;
-}
-
-export interface ViewSort {
-  field: string;
-  order?: string;
-  exposed?: boolean;
-  label?: string;
-}
-
-/** One `config.view.<id>` entry of the data model (schema `ViewBundle`). */
-export interface ViewDef {
-  label?: string;
-  purpose?: string;
-  display?: string;
-  path?: string;
-  title?: string;
-  row: ViewRow;
-  pager?: { type?: string; items_per_page?: number };
-  empty?: string;
-  header?: string;
-  footer?: string;
-  sorts?: ViewSort[];
-  filters?: Record<string, unknown>;
-  view_modes: Record<string, { template?: string; label?: string; settings?: Record<string, unknown> }>;
 }
 
 type PartTarget = 'prop' | 'slot' | 'any';
@@ -73,25 +46,6 @@ function isObj(v: unknown): v is Record<string, unknown> {
 
 function asString(v: unknown): string {
   return typeof v === 'string' ? v : '';
-}
-
-/** The view's data-model entry when `entity_type` is `view` and `config.view.<bundle>` exists. */
-export function viewDef(model: Record<string, unknown>, entityType: string, bundle: string): ViewDef | undefined {
-  if (entityType !== 'view') return undefined;
-  const config = isObj(model.config) ? model.config : undefined;
-  const views = config && isObj(config.view) ? config.view : undefined;
-  const def = views?.[bundle];
-  return isObj(def) ? (def as unknown as ViewDef) : undefined;
-}
-
-/** JSONata bindings a view mapping evaluates with: `$view` is the view's data-model entry. */
-export function viewBindingsFor(
-  model: Record<string, unknown>,
-  entityType: string,
-  bundle: string,
-): { view: ViewDef } | undefined {
-  const def = viewDef(model, entityType, bundle);
-  return def ? { view: def } : undefined;
 }
 
 function rowOf(def: ViewDef): ViewRow | undefined {
@@ -208,7 +162,23 @@ export interface ViewCheckError {
   message: string;
 }
 
-/** Why a config-sourced part has nothing to read on this view; undefined when it has. */
+/**
+ * Whether the backend knows the result total: a `full` pager counts it, and a view that shows
+ * every row (no pager, or `none` without `items_per_page`) has its row count as the total.
+ */
+function countsTotal(def: ViewDef): boolean {
+  if (!isObj(def.pager)) return true;
+  const type = asString(def.pager.type);
+  return type === 'full' || (type === 'none' && def.pager.items_per_page === undefined);
+}
+
+function pagerLabel(def: ViewDef): string {
+  const pager = isObj(def.pager) ? def.pager : {};
+  const type = asString(pager.type) || 'unset';
+  return typeof pager.items_per_page === 'number' ? `${type} with items_per_page` : type;
+}
+
+/** Why a part has nothing to read on this view; undefined when it has. */
 function configSourceMissing(def: ViewDef, binding: ViewBinding, mode: string): string | undefined {
   switch (binding.field) {
     case 'title':
@@ -224,6 +194,10 @@ function configSourceMissing(def: ViewDef, binding: ViewBinding, mode: string): 
         : 'declares no pager.items_per_page';
     case 'page':
       return isObj(def.pager) ? undefined : 'declares no pager';
+    case 'total':
+      return countsTotal(def)
+        ? undefined
+        : `pager ${pagerLabel(def)} counts no total; bind total only with pager full or a view that shows every row`;
     case 'exposed_sorts':
       return Array.isArray(def.sorts) && def.sorts.some((s) => isObj(s) && s.exposed === true)
         ? undefined
@@ -321,7 +295,11 @@ export function validateViewMapping(def: ViewDef, bindings: ViewBinding[], ctx: 
   const rowIds = new Set(rowPool.map((rec) => String(rec.id)));
   for (const rec of results) {
     const raw = rec.values?.rows;
-    const ids = Array.isArray(raw) ? raw.map(String) : raw == null ? [] : [String(raw)];
+    if (!Array.isArray(raw)) {
+      errors.push({ path: 'mapping', message: `${name} result ${rec.id}: rows must be an array of row ids` });
+      continue;
+    }
+    const ids = raw.map(String);
     const missing = ids.filter((id) => !rowIds.has(id));
     if (missing.length && rowPool.length) {
       errors.push({

@@ -1,6 +1,7 @@
 config:
   view:
     recent_articles:
+      display: block
       row:
         entity_type: node
         bundle: article

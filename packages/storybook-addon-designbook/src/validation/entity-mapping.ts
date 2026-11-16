@@ -5,6 +5,7 @@ import type { ValidationResult } from './types.js';
 import type { DesignbookConfig } from '../shared/config.js';
 import { load as parseYaml } from 'js-yaml';
 import { readBundleFiles } from '../scene-model/data-pool.js';
+import { viewBindingsFor } from '../shared/view-bindings.js';
 
 interface ComponentNode {
   component: string;
@@ -115,12 +116,9 @@ export async function validateEntityMapping(file: string, config: DesignbookConf
 }
 
 /** `{ view: config.view.<id> }` from the data model, or undefined when the view is not declared. */
-function loadViewBindings(config: DesignbookConfig, id: string): { view: Record<string, unknown> } | undefined {
+function loadViewBindings(config: DesignbookConfig, id: string): ReturnType<typeof viewBindingsFor> {
   const modelPath = resolve(config.data, 'data-model.yml');
   if (!existsSync(modelPath)) return undefined;
-  const model = parseYaml(readFileSync(modelPath, 'utf-8')) as {
-    config?: { view?: Record<string, Record<string, unknown>> };
-  } | null;
-  const view = model?.config?.view?.[id];
-  return view ? { view } : undefined;
+  const model = parseYaml(readFileSync(modelPath, 'utf-8'));
+  return model && typeof model === 'object' ? viewBindingsFor(model as Record<string, unknown>, 'view', id) : undefined;
 }

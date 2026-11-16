@@ -634,6 +634,16 @@ describe('view mappings — compile and result validation', () => {
     expect(result.errors).toContain('mapping AST does not match the declared bindings');
   });
 
+  it('rejects a result record whose rows is not an array', async () => {
+    const { plan, task } = await buildView();
+    const sample = plan.steps
+      .flatMap((s) => s.tasks)
+      .find((t) => t.name === 'create-sample-data' && t.title === 'contacts')!;
+    (sample.params.records as Array<{ values: Record<string, unknown> }>)[0]!.values.rows = 'contacts-1';
+    const result = await validateCompositionResult(plan, task, { 'entity-mapping': compilePlannedMapping(task, plan) });
+    expect(result.errors).toContain('result filled: rows must be an array of row ids');
+  });
+
   it('rejects rows rendered in another view mode', async () => {
     const { plan, task } = await buildView();
     const wrongMode = compilePlannedMapping(task, plan).replace('"view_mode": "contact"', '"view_mode": "teaser"');

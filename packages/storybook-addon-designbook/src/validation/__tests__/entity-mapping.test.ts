@@ -36,7 +36,7 @@ describe('validateEntityMapping', () => {
     mkdirSync(join(dir, 'entity-mapping'));
     writeFileSync(
       join(dir, 'data-model.yml'),
-      'content: {}\nconfig:\n  view:\n    contacts:\n      title: My contacts\n      row: { entity_type: user, bundle: user, view_mode: contact }\n      view_modes: { default: { template: list-view } }\n',
+      'content: {}\nconfig:\n  view:\n    contacts:\n      display: block\n      title: My contacts\n      row: { entity_type: user, bundle: user, view_mode: contact }\n      view_modes: { default: { template: list-view } }\n',
     );
     writeFileSync(join(dir, 'data', 'view.contacts.yml'), '- id: filled\n  rows: ["1"]\n- id: empty\n  rows: []\n');
     const file = join(dir, 'entity-mapping', 'view.contacts.default.jsonata');

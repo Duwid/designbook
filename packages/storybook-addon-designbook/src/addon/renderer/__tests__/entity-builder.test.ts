@@ -200,7 +200,17 @@ describe('entityBuilder', () => {
         designbookDir: dir,
         dataModel: {
           content: {},
-          config: { view: { contacts: { title: 'My contacts', empty: 'None yet.' } as never } },
+          config: {
+            view: {
+              contacts: {
+                display: 'block',
+                title: 'My contacts',
+                empty: 'None yet.',
+                row: { entity_type: 'node', bundle: 'article', view_mode: 'teaser' },
+                view_modes: { default: { template: 'list-view' } },
+              } as never,
+            },
+          },
         },
         sampleData: {
           config: {

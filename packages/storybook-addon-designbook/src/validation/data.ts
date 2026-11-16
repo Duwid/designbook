@@ -146,15 +146,20 @@ export function validateData(dataModelPath: string, dataDir: string): Validation
       if (Array.isArray(records)) {
         for (const rec of records) {
           validateDesignbookSection(rec as Record<string, unknown>, entityType, bundle, errors);
-          if (row?.entity_type && row.bundle) {
-            const pool = contentData[row.entity_type]?.[row.bundle] ?? [];
-            const raw = (rec as Record<string, unknown>).rows;
-            for (const id of Array.isArray(raw) ? raw : raw == null ? [] : [raw]) {
-              if (!pool.some((r) => (r as Record<string, unknown>).id === String(id))) {
-                warnings.push(
-                  `Broken row: view.${bundle} id=${String((rec as Record<string, unknown>).id ?? '?')} rows → ${row.entity_type}.${row.bundle} id=${String(id)} not found`,
-                );
-              }
+          if (entityType !== 'view') continue;
+          const rid = String((rec as Record<string, unknown>).id ?? '?');
+          const raw = (rec as Record<string, unknown>).rows;
+          if (!Array.isArray(raw)) {
+            errors.push(`View result view.${bundle} id=${rid}: rows must be an array of row ids`);
+            continue;
+          }
+          if (!row?.entity_type || !row.bundle) continue;
+          const pool = contentData[row.entity_type]?.[row.bundle] ?? [];
+          for (const id of raw) {
+            if (!pool.some((r) => (r as Record<string, unknown>).id === String(id))) {
+              warnings.push(
+                `Broken row: view.${bundle} id=${rid} rows → ${row.entity_type}.${row.bundle} id=${String(id)} not found`,
+              );
             }
           }
         }
