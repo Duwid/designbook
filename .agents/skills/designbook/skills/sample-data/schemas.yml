@@ -43,7 +43,6 @@ PlannedSampleRecord:
         Concrete fields needed by planned bindings, references, and composition.
         Keys are field machine names. A field whose data-model type is
         `component_tree` holds a ComponentNode[] tree (see scenes ComponentNode).
-        A View result record (`entity_type: view`) holds the ViewResult values.
       additionalProperties: true
 
 ViewResult:

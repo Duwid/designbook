@@ -118,7 +118,7 @@ ViewBundle:
     label:
       type: string
       description: Human-readable view name.
-      examples: [Contacts, Landing teasers]
+      examples: [News, Landing teasers]
     purpose:
       type: string
       description: What the listing is for and where it appears.
@@ -131,7 +131,7 @@ ViewBundle:
     path:
       type: string
       description: Route of a `page` display; required when `display` is `page`.
-      examples: [/contacts, /news]
+      examples: [/news, /events]
     title:
       type: string
       description: Heading the view shows above its rows.
@@ -152,7 +152,7 @@ ViewBundle:
         view_mode:
           type: string
           description: View mode of the row bundle each row renders in.
-          examples: [teaser, contact]
+          examples: [teaser, card]
     pager:
       type: object
       description: >-

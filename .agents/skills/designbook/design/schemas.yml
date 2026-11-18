@@ -557,18 +557,13 @@ MappingBinding:
   description: >
     One source field bound to exactly one component prop or slot. A `path` array
     selects a structured-field member. `entity` is present only on a reference slot.
-    For a View (`config.view.<id>`), `field` names a view part instead of a field:
-    `rows` (slot; target is the view's `row`, no `entity`), `title`, `header`,
-    `footer`, `empty` (prop or slot), `pager`, `items_per_page`, `total`, `page`,
-    `exposed_sorts` (prop), or `settings` (prop; `path` is the key path inside the
-    mode's `settings`).
   required: [field]
   additionalProperties: false
   properties:
     field:
       type: string
-      description: Data-model field machine name, or a view part for a View mapping.
-      examples: [field_title, field_signage_item, rows, title]
+      description: Data-model field machine name, or another bindable part a rule defines for the mapped bundle's type.
+      examples: [field_title, field_signage_item]
     path:
       type: array
       description: Optional path within a structured field. The first field remains a real model field.
@@ -632,10 +627,10 @@ CompositionMappingSnapshot:
         form_mode: { type: string, description: Form mode when mode_kind is form. }
     component:
       type: string
-      description: Qualified target component ID of a field-map or View mapping. Omitted when the bundle has a component_tree field.
+      description: Qualified target component ID of a field-map mapping. Omitted when the bundle has a component_tree field.
     bindings:
       type: array
-      description: Declared field (or view part) bindings of a field-map or View mapping. Omitted when the bundle has a component_tree field.
+      description: Declared bindings of a field-map mapping. Omitted when the bundle has a component_tree field.
       items:
         $ref: "#/MappingBinding"
     source:

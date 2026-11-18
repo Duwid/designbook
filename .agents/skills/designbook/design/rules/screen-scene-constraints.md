@@ -23,9 +23,8 @@ A screen scene answers one question: *what is this page?* Exactly one node in th
   content is an error — the page bears no route. Two is an error — the route is ambiguous.
 - The main content is a single **Entity** (a route-bearing content entity, addressed as
   `entity: "<entity_type>.<bundle>"`) **or** a **View** (a listing that owns a route, addressed
-  as `entity: "view.<id>"`). A route-bearing View is a `display: page` View in the data model
-  (`config.view.<id>.display`); a `display: block` View is a block. A component or decorative
-  widget is never the main content — it bears no route.
+  as `entity: "view.<id>"`). A component or decorative widget is never the main content — it
+  bears no route.
 - Every other node in `content` is a **block** — beiwerk that carries no route and stands beside
   the main content, never in place of it. This rule decides only *which* node is a block; **how a
   block is realized and typed on the backend is a backend concern** — the backend's block rules
@@ -38,10 +37,10 @@ A screen scene answers one question: *what is this page?* Exactly one node in th
 - `records:` is a demo shorthand that repeats one entity across sample indices; a real listing is
   a **View**. (The schema states the same at `EntityNode.records` — this is the rule that governs
   the scene build.)
-- Every **entity** node — the main content or a block, a single entity or a View — selects its
-  sample record with `record:` (an index) or `select:` (a predicate). A View's record is one of
-  its result records in `data/view.<id>.yml`: the displayed state of the listing (e.g. `filled`
-  or `empty`), whose `rows` the View mapping renders.
+- Every **entity** node — the main content or a block — MUST select its sample record with
+  `record:` (an index) or `select:` (a predicate). Without either, the node evaluates its mapping
+  against an **empty context** and renders blank: every field the mapping reads is undefined, so
+  the component appears with empty slots.
 - The originating intake labels the main content in its structure preview, so the user
   approves which node bears the route before the scene is built.
 
@@ -65,7 +64,7 @@ scenes:
             - entity: "[ENTITY_TYPE].[ENTITY_BUNDLE]"   # the route-bearer
               view_mode: "[VIEW_MODE]"
               record: 0                                 # a direct entity MUST pick its record (or use `select:`)
-            # … or a View (entity: "view.[VIEW_ID]", display: page) — never both; its record picks the result state
+            # … or a View (entity: "view.[VIEW_ID]") — never both; it picks a record too
             # every further node is a block beside the main content — an entity block picks a record too
             - entity: "[BLOCK_ENTITY_TYPE].[BLOCK_BUNDLE]"
               view_mode: "[VIEW_MODE]"

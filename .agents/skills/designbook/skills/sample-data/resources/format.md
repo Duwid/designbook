@@ -26,20 +26,11 @@ content:
       - id: "author-1"
         name: Dr. Lena Hartmann
         field_role: Veterinarian
-
-config:
-  view:
-    article_listing:            # View result records (ViewResult), one per displayed state
-      - id: filled
-        rows: ["1", "2"]        # plain ids of the view's row bundle (node.article)
-        total: 14
-      - id: empty
-        rows: []
 ```
 
 ## Generation Order
 
-Generate `content:` entities first, then `config:` entities. A View result record lists row ids of a content bundle — that bundle must exist before config generation begins.
+Generate `content:` entities first, then `config:` entities. Config records may reference content records by id — those bundles must exist before config generation begins.
 
 ```
 Pass 1 → all content: bundles
@@ -48,7 +39,7 @@ Pass 2 → all config: bundles
 
 ## Entity References
 
-Every reference is a **plain string id** of the target record — in content fields and in View rows alike:
+Every reference is a **plain string id** of the target record:
 
 ### Plain string ID (content entity fields)
 
@@ -64,18 +55,6 @@ content:
 ```
 
 The validator checks these by matching against `id` fields in the target bundle.
-
-### View rows (plain ids)
-
-A View result record lists its rows as plain ids of the view's row bundle (`config.view.<id>.row`), like a multi-value reference field. The view config — title, pager, empty text — stays in the data model; the result record carries only `rows`, `total` and `page`.
-
-```yaml
-config:
-  view:
-    pet_listing:
-      - id: filled
-        rows: [pet-1, pet-2]     # ← ids in content.node.pet
-```
 
 ## Field Templates
 
