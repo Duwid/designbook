@@ -15,10 +15,7 @@ entity references.
 When a workflow produces `entity_mappings` and `sample_data_bundles`, those results MUST
 contain the full renderable entity closure:
 
-- Start with every entity the workflow explicitly renders. A rendered View
-  (`view.<id>`) brings its row bundle (`config.view.<id>.row`) with the row view mode
-  into `entity_mappings`, and both its result pool `view.<id>` and the row bundle into
-  `sample_data_bundles`.
+- Start with every entity the workflow explicitly renders.
 - Recursively traverse each rendered bundle's `type: reference` fields whose target exists
   under `data_model.content`.
 - Add every reached bundle to `entity_mappings` with the view mode used for that render.
